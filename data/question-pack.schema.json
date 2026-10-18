@@ -1,0 +1,524 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Party Quiz canonical eight-level question pack, versions 2 and 3",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "version",
+    "title",
+    "locales",
+    "categories",
+    "questions"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "enum": [2, 3]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{1,120}$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 12000
+    },
+    "title": {
+      "$ref": "#/$defs/triple"
+    },
+    "description": {
+      "$ref": "#/$defs/triple"
+    },
+    "locales": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "en",
+          "zh-Hans",
+          "zh-Hant"
+        ]
+      }
+    },
+    "categories": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]{1,120}$"
+          },
+          "name": {
+            "$ref": "#/$defs/triple"
+          }
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "maxItems": 50000,
+      "items": {
+        "$ref": "#/$defs/question"
+      }
+    }
+  },
+  "$defs": {
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 12000
+    },
+    "triple": {
+      "type": "object",
+      "required": [
+        "en",
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "properties": {
+        "en": {
+          "$ref": "#/$defs/text"
+        },
+        "zh-Hans": {
+          "$ref": "#/$defs/text"
+        },
+        "zh-Hant": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    "locale": {
+      "type": "object",
+      "required": [
+        "prompt"
+      ],
+      "properties": {
+        "prompt": {
+          "$ref": "#/$defs/text"
+        },
+        "openPrompt": {
+          "$ref": "#/$defs/text"
+        },
+        "acceptedAnswers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/text"
+          }
+        },
+        "rubric": {
+          "$ref": "#/$defs/text"
+        },
+        "answer": {
+          "$ref": "#/$defs/text"
+        },
+        "explanation": {
+          "type": "string",
+          "maxLength": 12000
+        },
+        "optionLabels": {
+          "type": "object",
+          "minProperties": 3,
+          "maxProperties": 6,
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]{1,120}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/text"
+          }
+        }
+      }
+    },
+    "question": {
+      "type": "object",
+      "required": [
+        "id",
+        "categoryId",
+        "difficulty",
+        "locales"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]{1,120}$"
+        },
+        "categoryId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]{1,120}$"
+        },
+        "difficulty": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "openPoints": {
+          "type": "integer",
+          "enum": [200, 400, 600, 800]
+        },
+        "formats": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "choice",
+              "open"
+            ]
+          }
+        },
+        "options": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]{1,120}$"
+          }
+        },
+        "correctOptionId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]{1,120}$"
+        },
+        "locales": {
+          "type": "object",
+          "required": [
+            "en",
+            "zh-Hans",
+            "zh-Hant"
+          ],
+          "properties": {
+            "en": {
+              "$ref": "#/$defs/locale"
+            },
+            "zh-Hans": {
+              "$ref": "#/$defs/locale"
+            },
+            "zh-Hant": {
+              "$ref": "#/$defs/locale"
+            }
+          }
+        },
+        "tag": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "required": [
+                "en",
+                "zh-Hans",
+                "zh-Hant"
+              ],
+              "properties": {
+                "en": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "zh-Hans": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "zh-Hant": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "type"
+                ]
+              },
+              {
+                "required": [
+                  "points"
+                ]
+              },
+              {
+                "required": [
+                  "level"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "formats"
+            ],
+            "properties": {
+              "formats": {
+                "const": [
+                  "open"
+                ]
+              }
+            }
+          },
+          "then": {
+            "allOf": [
+              {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "options"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "correctOptionId"
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "properties": {
+                  "locales": {
+                    "properties": {
+                      "en": {
+                        "required": [
+                          "answer"
+                        ]
+                      },
+                      "zh-Hans": {
+                        "required": [
+                          "answer"
+                        ]
+                      },
+                      "zh-Hant": {
+                        "required": [
+                          "answer"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "else": {
+            "required": [
+              "options",
+              "correctOptionId"
+            ],
+            "properties": {
+              "locales": {
+                "properties": {
+                  "en": {
+                    "required": [
+                      "optionLabels"
+                    ]
+                  },
+                  "zh-Hans": {
+                    "required": [
+                      "optionLabels"
+                    ]
+                  },
+                  "zh-Hant": {
+                    "required": [
+                      "optionLabels"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "locales": {
+                    "properties": {
+                      "en": {
+                        "required": [
+                          "answer"
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "locales": {
+                    "properties": {
+                      "zh-Hans": {
+                        "required": [
+                          "answer"
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "locales": {
+                    "properties": {
+                      "zh-Hant": {
+                        "required": [
+                          "answer"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "then": {
+            "properties": {
+              "locales": {
+                "properties": {
+                  "en": {
+                    "required": [
+                      "answer"
+                    ]
+                  },
+                  "zh-Hans": {
+                    "required": [
+                      "answer"
+                    ]
+                  },
+                  "zh-Hant": {
+                    "required": [
+                      "answer"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "locales": {
+                    "properties": {
+                      "en": {
+                        "required": [
+                          "openPrompt"
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "locales": {
+                    "properties": {
+                      "zh-Hans": {
+                        "required": [
+                          "openPrompt"
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "locales": {
+                    "properties": {
+                      "zh-Hant": {
+                        "required": [
+                          "openPrompt"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "then": {
+            "properties": {
+              "locales": {
+                "properties": {
+                  "en": {
+                    "required": [
+                      "openPrompt"
+                    ]
+                  },
+                  "zh-Hans": {
+                    "required": [
+                      "openPrompt"
+                    ]
+                  },
+                  "zh-Hant": {
+                    "required": [
+                      "openPrompt"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "schemaVersion": {"const": 2}
+            }
+          },
+          "then": {
+            "properties": {
+              "questions": {
+                "items": {"not": {"required": ["openPoints"]}}
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "schemaVersion": {"const": 3}
+            }
+          },
+          "then": {
+            "properties": {
+              "questions": {
+                "items": {
+                  "if": {
+                    "properties": {
+                      "formats": {"contains": {"const": "open"}}
+                    }
+                  },
+                  "then": {"required": ["openPoints"]}
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

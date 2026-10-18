@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 2,
+  "packs": [
+    "packs/builtin-bank.json"
+  ]
+}
