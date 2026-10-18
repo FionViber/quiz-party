@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#FFEB3B">
+  <meta name="description" content="2–8 人共用一块屏幕的聚会问答游戏。题目同时显示英文、简体中文和繁体中文，可离线游玩。">
+  <title>问答派对</title>
+  <!-- STYLE -->
+  <link rel="stylesheet" href="assets/game.css?v=4518437a05">
+</head>
+<body>
+  <div id="viewport"><div id="game-stage">
+  <a class="skip-link" href="#main"><span lang="en">Skip to content</span> / <span lang="zh-Hans">跳到主要内容</span> / <span lang="zh-Hant">跳到主要內容</span></a>
+  <header id="header"></header>
+  <main id="main" tabindex="-1"></main>
+  <div id="modal-layer" hidden><section id="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabindex="-1"></section></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div id="curtain" class="curtain" aria-hidden="true" hidden></div>
+  <input type="file" id="save-input" accept=".json,application/json" hidden>
+  <input type="file" id="pack-input" accept=".json,application/json" multiple hidden>
+  <input type="file" id="deletions-input" accept=".json,application/json" hidden>
+  <noscript><p lang="en">Enable JavaScript in your browser, then reload the page to play.</p><p lang="zh-Hans">请在浏览器中启用 JavaScript，然后重新加载页面开始游戏。</p><p lang="zh-Hant">請在瀏覽器中啟用 JavaScript，然後重新載入頁面開始遊戲。</p></noscript>
+  </div></div>
+  <!-- SCRIPTS -->
+  <script src="assets/questions.js?v=090443ca3d"></script>
+  <script src="assets/vendor/html2canvas.min.js?v=e87e550794"></script>
+  <script src="assets/game.js?v=017c1b2c8c"></script>
+</body>
+</html>
