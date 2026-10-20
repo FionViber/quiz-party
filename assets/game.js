@@ -886,6 +886,11 @@ window.NeoI18n = {
     "本地保存失败。关闭游戏前，请导出需要保留的数据：存档在主界面导出，题包和隐藏记录在题库导出。",
     "本機儲存失敗。關閉遊戲前，請匯出需要保留的資料：存檔在主畫面匯出，題包和隱藏紀錄在題庫匯出。"
   ],
+  "cacheRestoreFailed": [
+    "The saved game could not be restored. Import its original question pack and reopen the game, or import a game save.",
+    "暂时无法恢复上次对局。请导入该局使用的原题包后重新打开游戏，或导入存档继续。",
+    "暫時無法恢復上次對局。請匯入該局使用的原題包後重新開啟遊戲，或匯入存檔繼續。"
+  ],
   "replacePack": [
     "Replace existing packs?",
     "替换已有题包？",
@@ -1695,7 +1700,22 @@ window.NeoAudio = (function () {
     try { result = music.play(); } catch (_) { return; }
     if (result && typeof result.then === 'function') {
       playPending = result;
-      result.then(() => { if (playPending === result) playPending = null; }, () => { if (playPending === result) playPending = null; });
+      result.then(() => {
+        if (playPending === result) playPending = null;
+        // A play promise may settle after a newer request replaced it. Do not
+        // pause that newer, authorised playback. If a visibility change left
+        // the current element paused, reconcile the latest desired state now.
+        if (generation !== musicGeneration) {
+          // The operation which advanced the generation already paused the
+          // element. A stale promise must never issue another pause because a
+          // newer play request may now own the same audio element.
+          if (canPlayMusic()) syncMusic();
+          return;
+        }
+        if (!canPlayMusic()) {
+          try { music.pause(); } catch (_) {}
+        }
+      }, () => { if (playPending === result) playPending = null; });
     }
   }
   function scheduleMusic() {
@@ -1752,7 +1772,12 @@ window.NeoAudio = (function () {
   const LIMIT = 12;
   const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, {granularity:'grapheme'}) : null;
   function normalize(value, trim = false) {
-    const text = String(value ?? '').replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, '').normalize('NFC');
+    let text = String(value ?? '').replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, '').normalize('NFC');
+    // Leading padding cannot be meaningful in a player name and must be
+    // removed before the live 12-grapheme limit. Keep trailing and internal
+    // spaces while the field is being edited; the committed form trims both
+    // ends.
+    text = trim ? text.trim() : text.replace(/^\s+/, '');
     const parts = segmenter ? Array.from(segmenter.segment(text), item => item.segment) : Array.from(text);
     // Also bound pathological combining sequences while keeping ordinary names intact.
     let result = '';
@@ -1760,7 +1785,7 @@ window.NeoAudio = (function () {
       if (result.length + part.length > 120) break;
       result += part;
     }
-    return trim ? result.trim() : result;
+    return result;
   }
   const api = {LIMIT, normalize};
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -1771,7 +1796,12 @@ window.NeoAudio = (function () {
 /* Game duration helpers. A finished legacy game without an end timestamp has no fabricated duration. */
 (function(root){
 'use strict';
-function time(value){const n=typeof value==='number'?value:Date.parse(value);return Number.isFinite(n)?n:null;}
+function time(value){
+ if(typeof value==='number')return Number.isFinite(value)?value:null;
+ if(value instanceof Date){const n=value.getTime();return Number.isFinite(n)?n:null;}
+ if(typeof value!=='string')return null;
+ const n=Date.parse(value);return Number.isFinite(n)?n:null;
+}
 function duration(game,now=Date.now()){
  if(!game||typeof game!=='object')return null;
  const start=time(game.startedAt);if(start===null)return null;
@@ -1864,6 +1894,14 @@ if(typeof module!=='undefined'&&module.exports)module.exports=api;
   }
 
   function groupId(labels) {
+    // Keep the displayed labels in the identity. Hash-only IDs can merge two
+    // different tags after a collision (and the old separator was itself a
+    // possible source of ambiguity). encodeURIComponent keeps the ID safe in
+    // data attributes while making the mapping lossless and deterministic.
+    return `tag-${encodeURIComponent(JSON.stringify(LANGUAGES.map(language => labels[language])))}`;
+  }
+
+  function legacyGroupId(labels) {
     const signature = LANGUAGES.map(language => labels[language]).join('\u001f');
     return `tag-${hash(signature)}-${hash(signature, 2654435761)}`;
   }
@@ -1881,7 +1919,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports=api;
       const id = groupId(labels);
       let group = groups.get(id);
       if (!group) {
-        group = { id, labels: Object.freeze({ ...labels }), count: 0, questionIds: [] };
+        group = { id, legacyId: legacyGroupId(labels), labels: Object.freeze({ ...labels }), count: 0, questionIds: [] };
         groups.set(id, group);
       }
       group.count += 1;
@@ -1903,8 +1941,21 @@ if(typeof module!=='undefined'&&module.exports)module.exports=api;
     const candidate = Array.isArray(selection)
       ? selection
       : (Array.isArray(selection.selectedIds) ? selection.selectedIds : []);
+    const groups = listGroups(pack);
     const known = new Set(all);
-    return Array.from(new Set(candidate.map(String))).filter(id => known.has(id));
+    const legacy = new Map();
+    for (const group of groups) {
+      const ids = legacy.get(group.legacyId) || [];
+      ids.push(group.id);
+      legacy.set(group.legacyId, ids);
+    }
+    const expanded = [];
+    for (const id of candidate.map(String)) {
+      const matches = legacy.get(id);
+      if (matches) expanded.push(...matches);
+      else expanded.push(id);
+    }
+    return Array.from(new Set(expanded)).filter(id => known.has(id));
   }
 
   function selectedGroupIds(pack, selection) {
@@ -1984,7 +2035,7 @@ function snapshot(game,recordedAt=new Date().toISOString()) {
   validateRecord(out);return out;
 }
 function validateRecord(raw){
-  if(!isObject(raw)||raw.schemaVersion!==SCHEMA_VERSION||typeof raw.id!=='string'||raw.id.length<1||raw.id.length>160||typeof raw.recordedAt!=='string'||!Number.isFinite(Date.parse(raw.recordedAt))||!isObject(raw.game)||raw.game.finished!==true||typeof raw.game.id!=='string'||raw.game.id!==raw.id||!['together','buzz','turns'].includes(raw.game.mode)||!isObject(raw.game.pack)||typeof raw.game.pack.id!=='string'||typeof raw.game.pack.version!=='string'||!isObject(raw.game.pack.title)||['en','zh-Hans','zh-Hant'].some(l=>typeof raw.game.pack.title[l]!=='string'||!raw.game.pack.title[l].trim())||!Number.isInteger(raw.game.questionTarget)||raw.game.questionTarget<1||!Array.isArray(raw.game.players)||raw.game.players.length<2||raw.game.players.length>8||!Array.isArray(raw.game.questionVariants)||!Array.isArray(raw.game.history)||raw.game.current!==null||JSON.stringify(raw).length>MAX_JSON)throw historyError('Invalid results history');
+  if(!isObject(raw)||raw.schemaVersion!==SCHEMA_VERSION||typeof raw.id!=='string'||raw.id.length<1||raw.id.length>160||typeof raw.recordedAt!=='string'||!Number.isFinite(Date.parse(raw.recordedAt))||!isObject(raw.game)||raw.game.finished!==true||typeof raw.game.id!=='string'||raw.game.id!==raw.id||!['together','buzz','turns'].includes(raw.game.mode)||!isObject(raw.game.pack)||typeof raw.game.pack.id!=='string'||typeof raw.game.pack.version!=='string'||!Number.isInteger(raw.game.pack.schemaVersion)||![1,2,3].includes(raw.game.pack.schemaVersion)||!isObject(raw.game.pack.title)||['en','zh-Hans','zh-Hant'].some(l=>typeof raw.game.pack.title[l]!=='string'||!raw.game.pack.title[l].trim())||!Number.isInteger(raw.game.questionTarget)||raw.game.questionTarget<1||!Array.isArray(raw.game.players)||raw.game.players.length<2||raw.game.players.length>8||!Array.isArray(raw.game.questionVariants)||raw.game.questionVariants.length!==raw.game.questionTarget||!Array.isArray(raw.game.history)||raw.game.history.length>raw.game.questionTarget||raw.game.current!==null||JSON.stringify(raw).length>MAX_JSON)throw historyError('Invalid results history');
   if(!validTimes(raw.game))throw historyError('Invalid results history');
   const C=core(), variants=new Map();
   if(!C.SUPPORTED_RULES_VERSIONS.includes(raw.game.rulesVersion)) throw historyError('Invalid results history');
@@ -1997,8 +2048,8 @@ function validateRecord(raw){
   const ids=new Set();
   for(const h of raw.game.history){
     if(!isObject(h)||typeof h.qid!=='string'||ids.has(h.qid)||!variants.has(h.qid)||typeof h.level!=='number'||typeof h.type!=='string'||typeof h.points!=='number'||typeof h.voided!=='boolean'||!Array.isArray(h.deltas)||h.deltas.length!==raw.game.players.length||!h.deltas.every(Number.isFinite)||!Array.isArray(h.judgments)||h.judgments.length!==raw.game.players.length||h.judgments.some(v=>v!==null&&typeof v!=='boolean'))throw historyError('Invalid results history');
-    const q=variants.get(h.qid);if(h.level!==q.level||h.type!==q.type||h.points!==q.points)throw historyError('Invalid results history');
-    if(h.answerer!==null&&!Number.isInteger(h.answerer))throw historyError('Invalid results history');
+    const q=variants.get(h.qid);if(h.level!==q.level||h.type!==q.type||h.points!==q.points||h.key!==`${raw.game.pack.id}::${h.qid}`)throw historyError('Invalid results history');
+    if(h.answerer!==null&&(!Number.isInteger(h.answerer)||h.answerer<0||h.answerer>=raw.game.players.length))throw historyError('Invalid results history');
     if(h.selected!==null&&typeof h.selected!=='string')throw historyError('Invalid results history');
     if(q.type==='choice'&&h.selected!==null&&!q.options.includes(h.selected))throw historyError('Invalid results history');
     if(q.type==='open'&&h.selected!==null)throw historyError('Invalid results history');
@@ -2007,7 +2058,24 @@ function validateRecord(raw){
   }
   return raw;
 }
-function normalize(value,{strict=true}={}) {if(value===undefined||value===null)return [];if(!Array.isArray(value))throw historyError('Invalid results history');const ids=new Set();return value.map(item=>{let copy;try{copy=clone(item);}catch(_){throw historyError('Invalid results history');}if(ids.has(copy?.id))throw historyError('Invalid results history');ids.add(copy?.id);if(copy?.game?.history)copy.game.history=cleanHistory(copy.game.history);validateRecord(copy);return copy;});}
+function normalize(value,{strict=true}={}) {
+ if(value===undefined||value===null)return [];
+ if(!Array.isArray(value))throw historyError('Invalid results history');
+ const ids=new Map(),out=[];
+ for(const item of value){
+   let copy;
+   try{
+     copy=clone(item);
+     if(copy?.game?.history)copy.game.history=cleanHistory(copy.game.history);
+     validateRecord(copy);
+   }catch(_){if(strict)throw historyError('Invalid results history');continue;}
+   if(ids.has(copy.id)){
+     if(strict)throw historyError('Invalid results history');
+     out[ids.get(copy.id)]=copy;
+   }else{ids.set(copy.id,out.length);out.push(copy);}
+ }
+ return out;
+}
 function upsert(list,game,recordedAt=new Date().toISOString()) {const out=normalize(list),item=snapshot(game,recordedAt),index=out.findIndex(x=>x.id===item.id);if(index>=0)out[index]=item;else out.push(item);return out;}
 function find(list,id){return normalize(list).find(x=>x.id===id)||null;}
 const api={SCHEMA_VERSION,MAX_JSON,snapshot,normalize,upsert,find,validateRecord};root.NeoResultsHistory=api;
@@ -2018,7 +2086,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports=api;
 /* Portable and versioned saves. No filesystem permissions or server APIs. */
 (function (root) {
 'use strict';
-const SAVE_VERSION=2, READER_VERSION=6, APP_VERSION='5.9.0';
+const SAVE_VERSION=2, READER_VERSION=6, APP_VERSION='5.10.0';
 const ResultsHistory=(typeof module!=='undefined'&&module.exports)?require('./results-history.js'):root.NeoResultsHistory;
 const PlayerNames=(typeof module!=='undefined'&&module.exports)?require('./player-names.js'):root.NeoPlayerNames;
 const Clock=(typeof module!=='undefined'&&module.exports)?require('./game-clock.js'):root.NeoGameClock;
@@ -2096,11 +2164,14 @@ function inspectSave(doc,packs,core) {
  const identity=doc.questionPack;
  if(!Object.prototype.hasOwnProperty.call(identity,'id')||!Object.prototype.hasOwnProperty.call(identity,'version')||!Object.prototype.hasOwnProperty.call(identity,'schemaVersion')||!Object.prototype.hasOwnProperty.call(identity,'fingerprint')||identity.id==null||identity.version==null||identity.schemaVersion==null||identity.fingerprint==null)throw archiveError('saveIncomplete','Incomplete save');
  if(typeof identity.id!=='string'||!identity.id.trim()||typeof identity.version!=='string'||!identity.version.trim()||!Number.isInteger(identity.schemaVersion)||identity.schemaVersion<1||typeof identity.fingerprint!=='string'||!/^[0-9a-f]{16}-\d+$/.test(identity.fingerprint))throw archiveError('saveFormatInvalid','Invalid save format');
- const pack=packs.find(p=>p.id===identity.id);
- if(!pack) throw archiveError('savePackMissing','Required question pack is not installed: '+identity.id,{packId:identity.id});
- if(pack.version!==identity.version)throw archiveError('savePackVersionMismatch','Question pack version does not match. Save expects '+identity.version+', installed '+String(pack.version),{packId:identity.id,expectedVersion:identity.version,installedVersion:pack.version});
- if(pack.schemaVersion!==identity.schemaVersion)throw archiveError('savePackSchemaMismatch','Question pack schema does not match',{packId:identity.id});
- if(fingerprint(pack)!==identity.fingerprint)throw archiveError('savePackContentMismatch','Question pack content differs from this save, even though the version string matches',{packId:identity.id});
+ const candidates=Array.isArray(packs)?packs.filter(p=>isObject(p)&&p.id===identity.id):[];
+ if(!candidates.length) throw archiveError('savePackMissing','Required question pack is not installed: '+identity.id,{packId:identity.id});
+ const versionMatches=candidates.filter(p=>p.version===identity.version);
+ if(!versionMatches.length){const installedVersions=[...new Set(candidates.map(p=>String(p.version)))];throw archiveError('savePackVersionMismatch','Question pack version does not match. Save expects '+identity.version,{packId:identity.id,expectedVersion:identity.version,installedVersion:installedVersions.join(', '),installedVersions});}
+ const schemaMatches=versionMatches.filter(p=>p.schemaVersion===identity.schemaVersion);
+ if(!schemaMatches.length)throw archiveError('savePackSchemaMismatch','Question pack schema does not match',{packId:identity.id,expectedSchemaVersion:identity.schemaVersion,installedSchemaVersions:versionMatches.map(p=>p.schemaVersion)});
+ const pack=schemaMatches.find(p=>fingerprint(p)===identity.fingerprint);
+ if(!pack)throw archiveError('savePackContentMismatch','Question pack content differs from this save, even though the version string matches',{packId:identity.id,expectedFingerprint:identity.fingerprint});
  const g=JSON.parse(JSON.stringify(doc.state.game));g.pack=JSON.parse(JSON.stringify(pack));
  if(Clock&&!Clock.validate(g))throw archiveError('saveRoundStateInvalid','Invalid game timestamps');
  // Migrate v1 saves that used the whole allocated board without a round target.
@@ -2138,11 +2209,22 @@ function inspectSave(doc,packs,core) {
      if(!committedHistoryIds.has(c.qid))throw archiveError('saveCommittedScoreMissing','Missing committed score');
      const committed=g.history.find(h=>h.qid===c.qid&&!h.voided);
      if(!committed||committed.judgments.some((v,i)=>v!==c.judgments[i]))throw archiveError('saveActiveScoreMismatch','Active score does not match history');
+     if(g.mode==='turns'){
+       const latest=historyLastCommitted(g.history);
+       if(!latest||latest.qid!==c.qid)throw archiveError('saveActiveScoreMismatch','Active turn score is not the latest committed score');
+     }
+   }
+   if(g.mode==='turns'&&c.phase==='judge'&&g.history.some(h=>h.qid===c.qid&&!h.voided)){
+     throw archiveError('saveActiveQuestionInvalid','A turn question cannot be judged again after it has been scored');
    }
  }
  let hidden;try{hidden=normalizeHidden(doc.state.hidden,true);}catch(err){if(err.code==='saveHiddenRecordsInvalid')throw err;throw archiveError('saveHiddenRecordsInvalid',err.message);}
  const resultsHistory=ResultsHistory?ResultsHistory.normalize(doc.state.resultsHistory,{strict:true}):[];
  return {game:g,lang:core.LANGUAGES.includes(doc.state.lang)?doc.state.lang:'zh-Hans',prefs:isObject(doc.state.prefs)?doc.state.prefs:{},hidden,activePack:pack.id,setup:isObject(doc.state.setup)?doc.state.setup:null,resultsHistory};
+}
+function historyLastCommitted(history){
+ for(let i=history.length-1;i>=0;i--)if(!history[i].voided)return history[i];
+ return null;
 }
 const api={SAVE_VERSION,READER_VERSION,APP_VERSION,fingerprint,exportSave,normalizeHidden,inspectSave};
 root.NeoArchive=api;
@@ -2667,6 +2749,8 @@ const api={build};root.NeoStats=api;if(typeof module!=='undefined'&&module.expor
     if (!el || !options) return false;
     const { flowData, flowPages, paintFlow } = options;
     if (!flowData || !flowPages || typeof paintFlow !== 'function') return false;
+    const amount = Number(delta);
+    if (!Number.isFinite(amount) || amount === 0) return false;
     const key = el.dataset.flowGroupRoot || el.dataset.flowGroup || groupKey(el);
     const root = el.closest('main, [role="dialog"], .modal, body') || document;
     const members = [...root.querySelectorAll(`.flow[data-flow-group="${CSS.escape(key)}"]`)]
@@ -2675,7 +2759,7 @@ const api={build};root.NeoStats=api;if(typeof module!=='undefined'&&module.expor
     if (!members.length) return false;
     const maxPages = Math.max(...members.map(item => item.entry.pages.length));
     const current = Number.isInteger(flowPages[key]) ? flowPages[key] : 0;
-    const next = Math.max(0, Math.min(maxPages - 1, current + Number(delta || 0)));
+    const next = Math.max(0, Math.min(maxPages - 1, current + amount));
     flowPages[key] = next;
     members.forEach(item => {
       item.entry.index = Math.min(next, item.entry.pages.length - 1);
@@ -2730,7 +2814,7 @@ async function renderElementToPng(element,{scale=1,background='#fff'}={}) {
   }});
   return await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Could not encode PNG')),'image/png'));
 }
-async function downloadElementPng(element,filename='partyquiz-results.png',options={}) {const blob=await renderElementToPng(element,options),doc=element.ownerDocument||document,url=URL.createObjectURL(blob),anchor=doc.createElement('a');anchor.href=url;anchor.download=filename;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),0);return blob;}
+async function downloadElementPng(element,filename='partyquiz-results.png',options={}) {const blob=await renderElementToPng(element,options),doc=element.ownerDocument||document,url=URL.createObjectURL(blob),anchor=doc.createElement('a');anchor.href=url;anchor.download=filename;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),30000);return blob;}
 const api={renderElementToPng,downloadElementPng};root.NeoResultsExport=api;if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window==='undefined'?globalThis:window);
 
@@ -2862,6 +2946,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports=api;
   const STORE_NAME = 'state';
   const RECORD_KEY = 'imports';
   const GAME_PACK_KEY = 'game-pack';
+  const PINNED_GAME_PACKS_KEY = 'game-packs';
   const DB_VERSION = 1;
   const ERROR_CODE = 'packStorageFailed';
 
@@ -2878,6 +2963,11 @@ if(typeof module!=='undefined'&&module.exports)module.exports=api;
     // browsers that do not expose structuredClone.
     if (typeof root.structuredClone === 'function') return root.structuredClone(value);
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function cloneForStorage(value, message) {
+    try { return clone(value); }
+    catch (cause) { throw storageError(message, cause); }
   }
 
   function indexedDBFor(value) {
@@ -2918,15 +3008,17 @@ if(typeof module!=='undefined'&&module.exports)module.exports=api;
         const store = tx.objectStore(STORE_NAME);
         request = operation(store);
       } catch (cause) {
+        try { tx?.abort?.(); } catch (_) {}
         reject(storageError('Could not access question-pack storage', cause));
         return;
       }
-      let value;
-      if (request) {
-        request.onsuccess = () => { value = request.result; };
-        request.onerror = () => reject(storageError('Could not access question-pack storage', request.error));
-      }
-      tx.oncomplete = () => resolve(value);
+      const requests = Array.isArray(request) ? request : (request ? [request] : []);
+      const values = [];
+      requests.forEach((item, index) => {
+        item.onsuccess = () => { values[index] = item.result; };
+        item.onerror = () => reject(storageError('Could not access question-pack storage', item.error));
+      });
+      tx.oncomplete = () => resolve(Array.isArray(request) ? values : values[0]);
       tx.onerror = () => reject(storageError('Question-pack storage transaction failed', tx.error));
       tx.onabort = () => reject(storageError('Question-pack storage transaction was aborted', tx.error));
     });
@@ -2934,6 +3026,23 @@ if(typeof module!=='undefined'&&module.exports)module.exports=api;
 
   function close(db) {
     try { db?.close?.(); } catch (_) { /* close is best effort after the result */ }
+  }
+
+  function pinnedPacks(value) {
+    if (value === undefined) return [];
+    if (Array.isArray(value)) return value.filter(pack => pack && typeof pack === 'object' && !Array.isArray(pack));
+    if (value && typeof value === 'object') return [value];
+    throw storageError('Stored game question packs are invalid');
+  }
+
+  function ordered(value) {
+    if (Array.isArray(value)) return '[' + value.map(ordered).join(',') + ']';
+    if (value && typeof value === 'object') return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + ordered(value[key])).join(',') + '}';
+    return JSON.stringify(value);
+  }
+
+  function samePack(a, b) {
+    return !!a && !!b && ordered(a) === ordered(b);
   }
 
   function create(indexedDB) {
@@ -2944,12 +3053,12 @@ if(typeof module!=='undefined'&&module.exports)module.exports=api;
         const value = await transaction(db, 'readonly', store => store.get(RECORD_KEY));
         if (value === undefined) return [];
         if (!Array.isArray(value)) throw storageError('Stored question packs are invalid');
-        return clone(value);
+        return cloneForStorage(value, 'Stored question packs are invalid');
       } finally { close(db); }
     }
     async function write(packs) {
       if (!Array.isArray(packs)) throw storageError('Question packs must be an array');
-      const copy = clone(packs);
+      const copy = cloneForStorage(packs, 'Question packs could not be prepared for storage');
       const idb = indexedDBFor(indexedDB);
       const db = await openDatabase(idb);
       try {
@@ -2958,23 +3067,45 @@ if(typeof module!=='undefined'&&module.exports)module.exports=api;
       return true;
     }
     async function readGamePack() {
+      const packs = await readGamePacks();
+      return packs[0] || null;
+    }
+    async function readGamePacks() {
       const idb = indexedDBFor(indexedDB);
       const db = await openDatabase(idb);
       try {
-        const value = await transaction(db, 'readonly', store => store.get(GAME_PACK_KEY));
-        return value === undefined ? null : clone(value);
+        const values = await transaction(db, 'readonly', store => [store.get(GAME_PACK_KEY), store.get(PINNED_GAME_PACKS_KEY)]);
+        const merged = [...pinnedPacks(values?.[0]), ...pinnedPacks(values?.[1])];
+        const seen = new Set();
+        return merged.filter(pack => {
+          const identity = ordered(pack);
+          if (seen.has(identity)) return false;
+          seen.add(identity); return true;
+        }).map(pack => cloneForStorage(pack, 'Stored game question pack is invalid'));
       } finally { close(db); }
     }
-    async function writeGamePack(pack) {
+    async function writeGamePack(pack, previousPack = null) {
       if (pack !== null && (typeof pack !== 'object' || Array.isArray(pack))) {
         throw storageError('Stored game question pack must be an object or null');
+      }
+      if (previousPack !== null && (typeof previousPack !== 'object' || Array.isArray(previousPack))) {
+        throw storageError('Previous game question pack must be an object or null');
       }
       const idb = indexedDBFor(indexedDB);
       const db = await openDatabase(idb);
       try {
-        await transaction(db, 'readwrite', store => pack === null
-          ? store.delete(GAME_PACK_KEY)
-          : store.put(clone(pack), GAME_PACK_KEY));
+        const preparedPack = pack === null ? null : cloneForStorage(pack, 'Game question pack could not be prepared for storage');
+        const next = preparedPack === null ? null : [preparedPack, ...(previousPack && !samePack(preparedPack, previousPack) ? [cloneForStorage(previousPack, 'Previous game question pack could not be prepared for storage')] : [])];
+        const preparedPins = next === null ? null : cloneForStorage(next, 'Game question packs could not be prepared for storage');
+        await transaction(db, 'readwrite', store => {
+          if (pack === null) {
+            return [store.delete(GAME_PACK_KEY), store.delete(PINNED_GAME_PACKS_KEY)];
+          }
+          return [
+            store.put(preparedPack, GAME_PACK_KEY),
+            store.put(preparedPins, PINNED_GAME_PACKS_KEY)
+          ];
+        });
       } finally { close(db); }
       return true;
     }
@@ -2985,10 +3116,10 @@ if(typeof module!=='undefined'&&module.exports)module.exports=api;
       finally { close(db); }
       return true;
     }
-    return Object.freeze({ read, write, readGamePack, writeGamePack, clear, dbName: DB_NAME, errorCode: ERROR_CODE });
+    return Object.freeze({ read, write, readGamePack, readGamePacks, writeGamePack, clear, dbName: DB_NAME, errorCode: ERROR_CODE });
   }
 
-  const api = { create, DB_NAME, STORE_NAME, RECORD_KEY, GAME_PACK_KEY, DB_VERSION, ERROR_CODE };
+  const api = { create, DB_NAME, STORE_NAME, RECORD_KEY, GAME_PACK_KEY, PINNED_GAME_PACKS_KEY, DB_VERSION, ERROR_CODE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.NeoPackStorage = create();
 })(typeof window === 'undefined' ? globalThis : window);
@@ -3048,11 +3179,61 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
 })(typeof window==='undefined'?globalThis:window);
 
 ;
+/* Latest-read cancellation and exclusive writes share one lifecycle. */
+(function(root){
+  'use strict';
+  function create(onBusyChange=()=>{}){
+    let revision=0,locked=false;
+    return Object.freeze({
+      get busy(){return locked;},
+      invalidate(){revision++;},
+      beginRead(){return locked?null:++revision;},
+      isCurrent(token){return token!==null&&token===revision&&!locked;},
+      async run(work){
+        if(locked)return false;
+        locked=true;revision++;
+        try{onBusyChange(true);return await work();}
+        finally{locked=false;onBusyChange(false);}
+      }
+    });
+  }
+  const api={create};root.NeoAsyncTasks=api;if(typeof module==='object'&&module.exports)module.exports=api;
+})(typeof window==='object'?window:globalThis);
+
+;
+/* Transitions always settle, including cancellation and background tabs. */
+(function(root){
+  'use strict';
+  const active=new WeakMap();
+  function cancel(element){active.get(element)?.();}
+  async function play(element,frames,{duration=150,reduced=false}={}){
+    cancel(element);
+    const doc=element?.ownerDocument||root.document;
+    if(reduced||doc?.hidden||!element?.animate)return;
+    let animation;
+    try{animation=element.animate(frames,{duration,fill:'forwards',easing:'ease-out'});}catch(_){return;}
+    let timer,settle;
+    const stop=new Promise(resolve=>{settle=resolve;});
+    const onHidden=()=>{if(doc?.hidden)settle();};
+    active.set(element,settle);
+    doc?.addEventListener?.('visibilitychange',onHidden);
+    timer=setTimeout(settle,Math.max(350,duration+200));
+    try{await Promise.race([Promise.resolve(animation.finished).catch(()=>{}),stop]);}
+    finally{
+      clearTimeout(timer);doc?.removeEventListener?.('visibilitychange',onHidden);
+      if(active.get(element)===settle)active.delete(element);
+      try{animation.cancel();}catch(_){}
+    }
+  }
+  const api={play,cancel};root.NeoMotion=api;if(typeof module==='object'&&module.exports)module.exports=api;
+})(typeof window==='object'?window:globalThis);
+
+;
 /* Quiz Party: shared-screen game flow and rendering. */
 (async function () {
   'use strict';
   const C = window.NeoCore, DICT = window.NeoI18n, audio = window.NeoAudio, Archive = window.NeoArchive, Stats = window.NeoStats, ResultsHistory = window.NeoResultsHistory, Cache = window.NeoCache, ImportErrors = window.NeoImportErrors;
-  const Names = window.NeoPlayerNames, Categories=window.NeoCategoryFilter, Clock=window.NeoGameClock;
+  const Names = window.NeoPlayerNames, Categories=window.NeoCategoryFilter, Clock=window.NeoGameClock, Motion=window.NeoMotion;
   const STORAGE = 'quizparty.release.v58';
   const HIDDEN_STORAGE = 'quizparty.hidden.v58';
   const LANG_NAMES = {en: 'English', 'zh-Hans': '简体中文', 'zh-Hant': '繁體中文'};
@@ -3081,13 +3262,11 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
   let saved;
   try { saved = JSON.parse(localStorage.getItem(STORAGE) || '{}'); } catch (_) { saved = {}; }
   if (!saved || typeof saved !== 'object' || Array.isArray(saved)) saved = {};
-  let storedImports=[], cachedGamePack=null;
-  try {
-    [storedImports,cachedGamePack]=await Promise.all([window.NeoPackStorage.read(),window.NeoPackStorage.readGamePack()]);
-  } catch (_) { /* Built-in play remains available when browser storage is disabled. */ }
-  const builtins = (window.NEO_BUILTIN || []).map(C.normalizePack);
-  if(cachedGamePack){try{cachedGamePack=C.validatePack(cachedGamePack).length?null:C.normalizePack(cachedGamePack);}catch(_){cachedGamePack=null;}}
-  const imported = storedImports.filter(p => C.validatePack(p).length === 0).map(C.normalizePack);
+  const reads=await Promise.allSettled([window.NeoPackStorage.read(),window.NeoPackStorage.readGamePacks()]);
+  const builtins=(window.NEO_BUILTIN||[]).map(C.normalizePack);
+  const validPacks=value=>(Array.isArray(value)?value:[]).filter(p=>C.validatePack(p).length===0).map(C.normalizePack);
+  const imported=[...new Map(validPacks(reads[0].status==='fulfilled'?reads[0].value:[]).map(p=>[p.id,p])).values()];
+  let cachedGamePacks=validPacks(reads[1].status==='fulfilled'?reads[1].value:[]);
   let packs = [...builtins.filter(p => !imported.some(a => a.id === p.id)), ...imported];
   const state = {
     lang: C.LANGUAGES.includes(saved.lang) ? saved.lang : 'zh-Hans',
@@ -3098,10 +3277,10 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
     library: {filter:'active', query:'', from:'home', scope:'all'}, modal: null, flowPages: {}
   };
   state.boardCursor = null;
-  try { state.resultsHistory = ResultsHistory.normalize(saved.resultsHistory); }
+  try { state.resultsHistory = ResultsHistory.normalize(saved.resultsHistory,{strict:false}); }
   catch (_) { state.resultsHistory = []; }
   state.resultHistoryId = null;
-  let exportingResults = false, storingPack = false;
+  let restoreFailed=false;
   try {
     const storedHidden = JSON.parse(localStorage.getItem(HIDDEN_STORAGE) || 'null');
     if (storedHidden && typeof storedHidden === 'object' && !Array.isArray(storedHidden)) state.hidden = storedHidden;
@@ -3111,7 +3290,7 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
   state.hidden = Archive.normalizeHidden(state.hidden);
   try {
     if (saved.game) {
-      const game = Cache.decodeGame(saved.game,[...packs,...(cachedGamePack?[cachedGamePack]:[])],Archive);
+      const game = Cache.decodeGame(saved.game,knownPacks(),Archive);
       if(C.validatePack(game.pack).length)throw new Error('Invalid cached pack');
       if (!Number.isInteger(game.questionTarget)) game.questionTarget = game.board?.length;
       const portable = Archive.exportSave({...state, game});
@@ -3119,10 +3298,22 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
       state.game.pack=game.pack;
       if (state.game.current && Object.hasOwn(state.hidden,C.key(game.pack.id,game.current.qid))) state.game.current = null;
     }
-  } catch (_) { /* A damaged cache must not prevent starting or importing a game. */ }
+  } catch (_) { restoreFailed=true; }
   const $ = s => document.querySelector(s);
   const main = $('#main'), dialog = $('#dialog'), modalLayer = $('#modal-layer');
-  let moving = false, toastTimer, cacheWarning = false, lastFocus, setupPlanCache;
+  let moving = false, toastTimer, cacheWarning = false, lastFocus, setupPlanCache, modalClosing=false, modalRevision=0, pendingHidden=null;
+  const historyFailures=new Set();
+  let busyFocus;
+  const tasks=window.NeoAsyncTasks.create(locked=>{
+    if(locked)busyFocus=document.activeElement;
+    syncInteractivity();
+    if(!locked){
+      flushHidden();
+      syncKeyboard();
+      const focus=busyFocus?.isConnected&&!busyFocus.closest('[inert]')?busyFocus:(state.modal?dialog.querySelector('button,a,input'):main);
+      focus?.focus({preventScroll:true});busyFocus=null;
+    }
+  });
   const flowData = new WeakMap(), flowCache = new Map();
   const BOARD_PAGE_SIZE = 48; // Eight columns × six rows: no board scrolling.
   let libraryRows = [];
@@ -3133,6 +3324,22 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
   }
   function B(action, label, cls = '', extra = '', symbol = '') { return `<button type="button" class="btn ${cls}" data-action="${action}" ${extra}>${symbol ? icon(symbol) : ''}${e(label)}</button>`; }
   function L(action, label, symbol = '', extra = '') { return `<button type="button" class="utility" data-action="${action}" ${extra}>${symbol ? icon(symbol) : ''}<span class="optional-label">${e(label)}</span></button>`; }
+  function knownPacks(){return [...builtins,...packs,...cachedGamePacks];}
+  function isBuiltin(pack){
+    const wanted=Cache.packIdentity(pack,Archive);
+    return builtins.some(p=>{const x=Cache.packIdentity(p,Archive);return x.id===wanted.id&&x.version===wanted.version&&x.schemaVersion===wanted.schemaVersion&&x.fingerprint===wanted.fingerprint;});
+  }
+  function busy(){return moving||modalClosing||tasks.busy;}
+  function syncInteractivity(){
+    const locked=tasks.busy||modalClosing;
+    $('#header').inert=!!state.modal||locked;main.inert=!!state.modal||locked;dialog.inert=locked;
+  }
+  function applyHidden(hidden){
+    state.hidden=hidden;
+    if(state.game?.current&&isHidden(state.game.pack.id,state.game.current.qid))state.game.current=null;
+    render();persist();
+  }
+  function flushHidden(){if(!busy()&&pendingHidden){const hidden=pendingHidden;pendingHidden=null;applyHidden(hidden);}}
   function getPack() { return packs.find(p => p.id === state.activePack) || packs[0]; }
   function currentQ() { const g=state.game, q=g?.pack.questions.find(q=>q.id===g.current?.qid); return q ? C.variant(q,g.current.level) : null; }
   function isHidden(packId, qid) { return Object.hasOwn(state.hidden, C.key(packId, qid)); }
@@ -3143,7 +3350,7 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
     try { localStorage.setItem(HIDDEN_STORAGE, JSON.stringify(state.hidden)); }
     catch (_) { if (!cacheWarning) { cacheWarning = true; setTimeout(() => toast(t('cacheFail'), 9000), 100); } }
     try {
-      localStorage.setItem(STORAGE, JSON.stringify({lang:state.lang,prefs:state.prefs,activePack:state.activePack,hidden:state.hidden,game:state.game?Cache.encodeGame(state.game,[...packs,...(cachedGamePack?[cachedGamePack]:[])],Archive):null,setup:state.setup,resultsHistory:state.resultsHistory}));
+      localStorage.setItem(STORAGE, JSON.stringify({lang:state.lang,prefs:state.prefs,activePack:state.activePack,hidden:state.hidden,game:state.game?Cache.encodeGame(state.game,knownPacks(),Archive):(restoreFailed?saved.game:null),setup:state.setup,resultsHistory:state.resultsHistory}));
     } catch (_) { if (!cacheWarning) { cacheWarning = true; setTimeout(() => toast(t('cacheFail'), 9000), 100); } }
   }
 
@@ -3168,8 +3375,19 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
     $('.skip-link').textContent = t('skip');
   }
 
-  function render(animate = false) {
-    header();
+  function reconcileView(){
+    const g=state.game;
+    if(state.view==='question'&&(!currentQ()||isHidden(g.pack.id,g.current.qid))){if(g)g.current=null;state.view=g?'board':'home';}
+    if(state.view==='board'){
+      if(!g)state.view='home';
+      else if(g.current)state.view='question';
+      else if(!remaining(g).length){Clock.finish(g);state.resultHistoryId=null;state.view='results';}
+    }
+    if(state.view==='results'&&!resultGame())state.view='home';
+    rememberFinishedGame();
+  }
+  function render() {
+    reconcileView();header();
     const views = {home:homeView,setup:setupView,board:boardView,question:questionView,library:libraryView,results:resultsView};
     main.innerHTML = (views[state.view] || homeView)();
     main.className = 'view-' + state.view;
@@ -3177,14 +3395,14 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
     if (state.modal) renderDialog();
     layoutFlows(main);
     initNeoScrollers(main);
-    syncKeyboard();
+    syncInteractivity();syncKeyboard();
   }
 
   function syncKeyboard() {
     window.NeoKeyboard.refresh({
       root:main, header:$('#header'), dialog:state.modal?dialog:null,
       context:state.modal?'modal-'+state.modal.type:state.view+'-'+(state.game?.current?.phase||''),
-      busy:()=>moving||exportingResults||storingPack||(!state.modal&&!modalLayer.hidden),
+      busy,
       contextObj:{
         reservedCodes:state.view==='question'&&state.game?.current?.phase==='answer'&&!state.modal?Array.from({length:6},(_,i)=>'Digit'+(i+1)):[],
         onEscapeEditing:()=>{document.activeElement?.blur();(state.modal?dialog:main).focus({preventScroll:true});},
@@ -3225,7 +3443,7 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
       const control=event.target?.closest?.('button,a[href]');
       if(control&&control.dataset.action!=='pick')return false;
       const slot=slots.find(s=>s.qid===state.boardCursor&&!s.disabled);
-      if(slot){audio.unlock();audio.play('click');pick(slot.qid,slot.level);}
+      if(slot){audio.unlock();audio.play('click');void pick(slot.qid,slot.level).catch(actionError);}
       return true;
     }
     if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.code))return false;
@@ -3238,20 +3456,18 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
     return true;
   }
 
-  async function go(view, change) {
-    if (moving) return;
-    if (state.modal) closeModal(true);
-    moving = true;
-    const curtain = $('#curtain');
-    const commit = () => { if (change) change(); if(view==='library'&&state.view!=='library')state.libraryScroll=0; state.view = view; render(); window.scrollTo(0,0); main.focus({preventScroll:true}); persist(); };
-    try {
-      if (reduced() || !curtain.animate) { commit(); return; }
-      curtain.hidden = false;
-      const into = curtain.animate([{transform:'translateY(100%)'},{transform:'translateY(0)'}], {duration:110,fill:'forwards',easing:'ease-in'});
-      await into.finished; commit();
-      const out = curtain.animate([{transform:'translateY(0)'},{transform:'translateY(-105%)'}], {duration:170,fill:'forwards',easing:'ease-out'});
-      await out.finished; into.cancel(); out.cancel();
-    } finally { curtain.hidden = true; moving = false; }
+  async function go(view,change){
+    if(moving)return;
+    tasks.invalidate();closeModal(true);moving=true;
+    const curtain=$('#curtain');
+    try{
+      if(!reduced())curtain.hidden=false;
+      await Motion.play(curtain,[{transform:'translateY(100%)'},{transform:'translateY(0)'}],{duration:110,reduced:reduced()});
+      if(change)change();
+      if(view==='library'&&state.view!=='library')state.libraryScroll=0;
+      state.view=view;render();window.scrollTo(0,0);persist();
+      await Motion.play(curtain,[{transform:'translateY(0)'},{transform:'translateY(-105%)'}],{duration:170,reduced:reduced()});
+    }finally{curtain.hidden=true;moving=false;syncInteractivity();if(!tasks.busy)main.focus({preventScroll:true});flushHidden();}
   }
   function modeStartButton(mode) {
     return `<button type="button" class="mode-start" data-action="mode" data-mode="${e(mode)}" data-key-preferred="Digit${C.MODES.indexOf(mode)+1}"><span>${e(t('play'))}</span>${icon('arrow')}</button>`;
@@ -3335,8 +3551,7 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
     return `<section class="neo-scroll-frame library-scroll" data-scroll-kind="library"><div class="neo-scroll-viewport" tabindex="0" role="region" aria-label="${e(t('library'))}"><div class="neo-scroll-content">${inner}</div></div><div class="neo-scroll-rail" aria-hidden="true"><div class="neo-scroll-thumb"></div></div></section>`;
   }
   function boardView() {
-    const g=state.game;if(!g){state.view='home';return homeView();}
-    if(!remaining(g).length){Clock.finish(g);g.current=null;state.view='results';state.resultHistoryId=null;return resultsView();}
+    const g=state.game;
     const qmap=new Map(g.pack.questions.map(q=>[q.id,q]));
     const seen=new Set(g.seen);
     const visible=g.board.map((b,i)=>({...b,number:i+1})).filter(b=>!isHidden(g.pack.id,b.qid));
@@ -3473,7 +3688,6 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
 
   function questionView() {
     const g=state.game,q=currentQ(),cur=g?.current;
-    if(!q||isHidden(g.pack.id,q.id)){if(g)g.current=null;state.view=g?'board':'home';return g?boardView():homeView();}
     // A V2 save can be paused before choosing a spoken-answer contestant.
     // Keep recorded answerers, but assign an unanswered turn to the current player.
     if(g.mode==='turns'&&cur.answerer===null)cur.answerer=C.currentPlayer(g);
@@ -3551,12 +3765,13 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
   }
   function resultGame(){return state.resultHistoryId?state.resultsHistory.find(item=>item.id===state.resultHistoryId)?.game:state.game;}
   function rememberFinishedGame(){
-    const g=state.game;if(!g?.finished||g.current)return;
+    const g=state.game;if(!g?.finished||g.current||historyFailures.has(g.id))return;
     if(state.resultsHistory.some(item=>item.id===g.id))return;
-    state.resultsHistory=ResultsHistory.upsert(state.resultsHistory,g);persist();
+    try{state.resultsHistory=ResultsHistory.upsert(state.resultsHistory,g);persist();}
+    catch(error){historyFailures.add(g.id);console.error(error);toast(t('cacheFail'),9000);}
   }
   function resultsView() {
-    rememberFinishedGame();const g=resultGame();if(!g){state.view='home';return homeView();}
+    const g=resultGame();
     const report=window.NeoResultsView.render({game:g,t,e,packTitle,Stats,C,clock:Clock,language:state.lang});
     return report+`<div class="results-controls"><span>${e(packTitle(g.pack))} · ${e(t('roundProgress',{n:activeHistory(g).length,total:g.questionTarget||g.board?.length||0}))}</span><div class="row">${B('home',t('home'),'small','','back')}${B('results-history',t('resultsHistory'),'small','','trophy')}${B('export-results',t('resultsExport'),'small','','download')}${B('replay',t('replay'),'primary small','','refresh')}</div></div>`;
   }
@@ -3571,19 +3786,25 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
     const level=state.view==='question'&&state.game?.current?.qid===qid ? state.game.current.level : C.levels(source)[0];
     return C.variant(source,level);
   }
-  function openModal(model) {
-    if(!state.modal)lastFocus=document.activeElement;
-    state.modal=model;modalLayer.hidden=false;$('#header').inert=true;main.inert=true;
-    renderDialog();
+  function openModal(model){
+    tasks.invalidate();modalRevision++;Motion.cancel(dialog);modalClosing=false;
+    if(!state.modal&&modalLayer.hidden)lastFocus=document.activeElement;
+    state.modal=model;modalLayer.hidden=false;syncInteractivity();renderDialog();
     dialog.querySelector('button,a,input')?.focus({preventScroll:true});
-    if(!reduced())dialog.animate([{transform:'translateY(22px)'},{transform:'translateY(0)'}],{duration:180,easing:'ease-out'});
+    void Motion.play(dialog,[{transform:'translateY(22px)'},{transform:'translateY(0)'}],{duration:180,reduced:reduced()});
   }
-
-  function closeModal(immediate=false) {
-    state.modal=null;const previousFocus=lastFocus;
-    const finish=()=>{if(!state.modal){modalLayer.hidden=true;$('#header').inert=false;main.inert=false;if(previousFocus?.isConnected)previousFocus.focus({preventScroll:true});syncKeyboard();}};
-    if(!immediate&&!reduced()&&!modalLayer.hidden)return dialog.animate([{transform:'translateY(0)'},{transform:'translateY(16px)'}],{duration:110,easing:'ease-in'}).finished.then(finish).catch(finish);
-    finish();
+  function closeModal(immediate=false){
+    if(!state.modal&&!modalClosing)return;
+    tasks.invalidate();const revision=++modalRevision,previousFocus=lastFocus;
+    state.modal=null;modalClosing=!immediate;Motion.cancel(dialog);syncInteractivity();
+    const finish=()=>{
+      if(revision!==modalRevision)return;
+      modalClosing=false;modalLayer.hidden=true;syncInteractivity();
+      if(previousFocus?.isConnected&&!tasks.busy)previousFocus.focus({preventScroll:true});
+      syncKeyboard();flushHidden();
+    };
+    if(immediate){finish();return;}
+    return Motion.play(dialog,[{transform:'translateY(0)'},{transform:'translateY(16px)'}],{duration:110,reduced:reduced()}).finally(finish);
   }
 
   function confirmModal(title,desc,callback,danger=false,confirmLabel='confirm') { openModal({type:'confirm',title,desc,callback,danger,confirmLabel}); }
@@ -3655,7 +3876,7 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
     const commit=()=>go('setup',()=>{state.setup.mode=mode;});
     if(state.game&&!state.game.finished)confirmModal('newGameWarn','newGameDesc',commit,false,'confirmNewGameSetup');else commit();
   }
-  async function startGame() {
+  function startGame() {return tasks.run(async()=>{
     const pack=getPack(),count=normalizeRoundChoice(pack,state.setup.questionCount);
     if(count<12){toast(t('needTwelve'));return;}
     const plan=roundPlan(pack,count);
@@ -3664,13 +3885,13 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
     const board=plan.board.map(slot=>({...slot}));
     if(!await retainGamePack(pack))return;
     return go('board',()=>{state.game={rulesVersion:4,id:'game-'+Date.now(),startedAt:new Date().toISOString(),mode:state.setup.mode,players,pack,questionTarget:count,board,seen:[],history:[],current:null,finished:false};setupPlanCache=null;state.resultHistoryId=null;state.boardPage=0;state.boardCursor=null;});
-  }
+  });}
   function pick(qid,level) {
     const g=state.game;
     const tile=g.board.find(x=>x.qid===qid&&x.level===level);
     if(!tile||g.seen.includes(qid)||isHidden(g.pack.id,qid))return;
     const q=C.variant(g.pack.questions.find(x=>x.id===qid),level);
-    go('question',()=>{state.boardCursor=qid;state.flowPages={};g.seen.push(q.id);g.current={qid:q.id,level:q.level,phase:'answer',selected:null,answerer:g.mode==='turns'?C.currentPlayer(g):null,judgments:Array(g.players.length).fill(null)};});
+    return go('question',()=>{state.boardCursor=qid;state.flowPages={};g.seen.push(q.id);g.current={qid:q.id,level:q.level,phase:'answer',selected:null,answerer:g.mode==='turns'?C.currentPlayer(g):null,judgments:Array(g.players.length).fill(null)};});
   }
   function revealAnswer() {
     const g=state.game,q=currentQ(),cur=g.current;
@@ -3711,16 +3932,16 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
       if(finished){Clock.finish(g);audio.play('finish');}
     });
   }
-  function hideQuestion(packId,qid) {
+  async function hideQuestion(packId,qid) {
     const gamePack=state.game?.pack.id===packId?state.game.pack:null, catalogPack=packs.find(p=>p.id===packId);
     const source=state.view==='question'?(gamePack||catalogPack):(catalogPack||gamePack);
     const q=findQuestionSource(packId,qid);
     state.hidden[C.key(packId,qid)]={packId,questionId:qid,hiddenAt:new Date().toISOString(),packTitle:source?.title,prompts:q?Object.fromEntries(C.LANGUAGES.map(l=>[l,q.locales[l].prompt])):undefined};
     const g=state.game;closeModal(true);
     // Hiding affects availability, not scores that were already confirmed.
-    if(g&&g.pack.id===packId&&g.current?.qid===qid){g.current=null;if(state.view==='question')returnToBoard();else refresh();}
+    if(g&&g.pack.id===packId&&g.current?.qid===qid){g.current=null;if(state.view==='question')await returnToBoard();else refresh();}
     else refresh();
-    persist();toast(t('deletedToast'));
+    toast(t('deletedToast'));
   }
 
   function restoreQuestion(packId,qid) {
@@ -3730,57 +3951,54 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
     const blob=new Blob([JSON.stringify(data,null,2)+'\n'],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
   }
-  async function retainGamePack(pack) {
-    const builtin=builtins.find(p=>p.id===pack.id&&Archive.fingerprint(p)===Archive.fingerprint(pack));
-    if(builtin){cachedGamePack=null;return true;}
-    storingPack=true;
-    try {await window.NeoPackStorage.writeGamePack(pack);cachedGamePack=pack;return true;}
+  async function retainGamePack(pack){
+    if(isBuiltin(pack))return true;
+    const previous=state.game?.pack&&!isBuiltin(state.game.pack)?state.game.pack:null;
+    try{await window.NeoPackStorage.writeGamePack(pack,previous);cachedGamePacks=previous?[pack,previous]:[pack];return true;}
     catch(error){openModal({type:'error',errors:[{path:packTitle(pack),...ImportErrors.resolveImportError(error,'pack')}]});return false;}
-    finally{storingPack=false;}
   }
   async function importFiles(files) {
     if(!files.length)return;
+    const token=tasks.beginRead();if(token===null)return;
     const incoming=[],errors=[];
     for(const f of files) {
       if(f.size>20*1024*1024){errors.push({path:f.name,message:t('fileLarge')});continue;}
       try {
-        const p=await ImportErrors.readJsonFile(f);
+        const p=await ImportErrors.readJsonFile(f);if(!tasks.isCurrent(token))return;
         const problems=C.validatePack(p);problems.forEach(err=>errors.push({...err,path:`${f.name} / ${err.path}`}));
         if(!problems.length)incoming.push(C.normalizePack(p));
-      } catch(err) {console.error(err);errors.push({path:f.name,...ImportErrors.resolveImportError(err,'pack')});}
+      } catch(err) {if(!tasks.isCurrent(token))return;console.error(err);errors.push({path:f.name,...ImportErrors.resolveImportError(err,'pack')});}
     }
+    if(!tasks.isCurrent(token))return;
     const seen=new Set();incoming.forEach(p=>{if(seen.has(p.id))errors.push({path:p.id,code:'duplicate'});seen.add(p.id);});
     if(errors.length){openModal({type:'error',errors});return;}
-    const apply=async()=>{
+    const apply=()=>tasks.run(async()=>{
       const candidate=[...imported];
       for(const p of incoming){const i=candidate.findIndex(x=>x.id===p.id),builtin=builtins.find(b=>b.id===p.id);if(builtin&&Archive.fingerprint(builtin)===Archive.fingerprint(p)){if(i>=0)candidate.splice(i,1);continue;}if(i>=0)candidate[i]=p;else candidate.push(p);}
-      storingPack=true;
       try{await window.NeoPackStorage.write(candidate);}
       catch(error){openModal({type:'error',errors:[{path:incoming.map(p=>p.id).join(', '),...ImportErrors.resolveImportError(error,'pack')}]});return;}
-      finally{storingPack=false;}
       imported.splice(0,imported.length,...candidate);
       packs=[...builtins.filter(p=>!imported.some(x=>x.id===p.id)),...imported];
       state.activePack=incoming[0].id;state.setup.questionCount=normalizeRoundChoice(getPack());refresh();toast(t('importOk',{n:incoming.length}));
-    };
-    if(incoming.some(p=>packs.some(x=>x.id===p.id)))confirmModal('replacePack','replaceDesc',apply,false,'confirmReplacePacks');else apply();
+    });
+    if(incoming.some(p=>packs.some(x=>x.id===p.id)))confirmModal('replacePack','replaceDesc',apply,false,'confirmReplacePacks');else return apply();
   }
   async function importDeletions(file) {
-    if(!file)return;
+    if(!file)return;const token=tasks.beginRead();if(token===null)return;
     try {
       if(file.size>20*1024*1024)throw ImportErrors.makeError('fileLarge');
-      const data=await ImportErrors.readJsonFile(file);
+      const data=await ImportErrors.readJsonFile(file);if(!tasks.isCurrent(token))return;
       const records=data.kind==='partyquiz-hidden'?data.hidden:data.kind==='partyquiz-deletions'?data.deleted:null;
       const pattern=/^[A-Za-z0-9._-]{1,120}$/;
       if(data.schemaVersion!==1||!Array.isArray(records)||!records.every(v=>v&&typeof v.packId==='string'&&typeof v.questionId==='string'&&pattern.test(v.packId)&&pattern.test(v.questionId)))throw ImportErrors.makeError('invalidHidden');
       const incoming=Archive.normalizeHidden(Object.fromEntries(records.map(r=>[C.key(r.packId,r.questionId),r])),true);
-      state.hidden=Object.assign(Object.create(null),state.hidden,incoming);
-      if(state.game?.current&&isHidden(state.game.pack.id,state.game.current.qid))state.game.current=null;
-      refresh();toast(t('importedDeletion'));
-    }catch(err){console.error(err);openModal({type:'error',errors:[{path:file.name,...ImportErrors.resolveImportError(err,'hidden')}]});}
+      applyHidden(Object.assign(Object.create(null),state.hidden,incoming));toast(t('importedDeletion'));
+    }catch(err){if(!tasks.isCurrent(token))return;console.error(err);openModal({type:'error',errors:[{path:file.name,...ImportErrors.resolveImportError(err,'hidden')}]});}
   }
 
   async function action(target) {
-    if(moving||exportingResults||storingPack)return;
+    if(busy()||target.isConnected===false)return;
+    if(state.modal?!dialog.contains(target):(!main.contains(target)&&!$('#header').contains(target)))return;
     const a=target.dataset.action,g=state.view==='results'?resultGame():state.game,cur=state.game?.current,q=currentQ();
     if(a==='results-history')return openModal({type:'history',page:0});
     if(a==='view-history'){if(!state.resultsHistory.some(item=>item.id===target.dataset.record))return;state.resultHistoryId=target.dataset.record;closeModal(true);return go('results');}
@@ -3796,7 +4014,6 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
     if(a==='pack-picker')return openModal({type:'packs',context:target.dataset.context,page:0});
     if(a==='modal-prev'||a==='modal-next'){state.modal.page=(state.modal.page||0)+(a==='modal-prev'?-1:1);return renderDialog();}
     if(a==='select-pack'){
-      const m=state.modal;
       if(target.dataset.pack==='*')state.library.scope='all';else{state.activePack=target.dataset.pack;state.library.scope=target.dataset.pack;}
       state.libraryScroll=0;closeModal(true);return refresh();
     }
@@ -3846,7 +4063,7 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
     if(a==='confirm-hide'){const m=state.modal;return hideQuestion(m.packId,m.qid);}
     if(a==='restore')return restoreQuestion(target.dataset.pack,target.dataset.qid);
     if(a==='close-modal')return closeModal();
-    if(a==='modal-confirm'){const cb=state.modal.callback;closeModal(true);return cb();}
+    if(a==='modal-confirm'&&state.modal?.type==='confirm'){const cb=state.modal.callback;closeModal(true);return cb();}
     if(a==='import'){$('#pack-input').click();return;}
     if(a==='export-pack'){const p=clone(getPack());return downloadJSON(p,builtins.some(b=>b.id===p.id)?'question-bank.json':p.id+'.json');}
     if(a==='export-deletions')return downloadJSON({schemaVersion:1,kind:'partyquiz-hidden',exportedAt:new Date().toISOString(),hidden:Object.values(state.hidden)},'question-hidden.json');
@@ -3856,42 +4073,43 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
       return downloadJSON(Archive.exportSave({game:state.game,lang:state.lang,prefs:state.prefs,hidden:state.hidden,activePack:state.activePack,setup:state.setup,resultsHistory:state.resultsHistory}),`quiz-party-save-${Date.now()}.json`);
     }
     if(a==='import-save'){$('#save-input').click();return;}
-    if(a==='export-results'){
-      exportingResults=true;
+    if(a==='export-results')return tasks.run(async()=>{
       try{await window.NeoResultsExport.downloadElementPng($('#game-stage'),`quiz-party-results-${Date.now()}.png`);}
       catch(err){console.error(err);toast(t('resultsExportFailed'),6000);}
-      finally{exportingResults=false;}return;
-    }
+    });
   }
   async function importSaveFile(file) {
-    if(!file)return;
+    if(!file)return;const token=tasks.beginRead();if(token===null)return;
     try {
       if(file.size>32*1024*1024)throw ImportErrors.makeError('saveFileLarge');
-      const saved=await ImportErrors.readJsonFile(file);
-      const checked=Archive.inspectSave(saved,packs,C);
-      const apply=async()=>{
+      const saved=await ImportErrors.readJsonFile(file);if(!tasks.isCurrent(token))return;
+      const checked=Archive.inspectSave(saved,knownPacks(),C);
+      const apply=()=>tasks.run(async()=>{
         if(!await retainGamePack(checked.game.pack))return;
         state.game=checked.game;
-        state.game.pack=packs.find(p=>p.id===checked.game.pack.id)||checked.game.pack;state.lang=checked.lang;state.resultHistoryId=null;
+        historyFailures.delete(state.game.id);state.lang=checked.lang;state.resultHistoryId=null;
         const merged=new Map(state.resultsHistory.map(item=>[item.id,item]));for(const item of checked.resultsHistory)merged.set(item.id,item);state.resultsHistory=[...merged.values()];
         state.prefs={sfx:checked.prefs.sfx!==false,music:checked.prefs.music===true,reduced:checked.prefs.reduced===true};
         state.hidden=checked.hidden;state.activePack=checked.activePack;
         if(checked.setup){state.setup={mode:C.MODES.includes(checked.setup.mode)?checked.setup.mode:checked.game.mode,count:checked.game.players.length,names:checked.game.players.concat(Array(8).fill('')).slice(0,8).map(n=>Names.normalize(n)),tagFilter:checked.setup.tagFilter};}
         state.setup.questionCount=normalizeRoundChoice(getPack(),checked.setup?.questionCount||checked.game.questionTarget||checked.game.board.length);
         state.boardPage=0;state.boardCursor=null;state.libraryScroll=0;state.flowPages={};
-        closeModal(true);go(state.game.finished?'results':state.game.current?'question':'board');persist();toast(t('saveImported'));
-      };
+        closeModal(true);await go(state.game.finished?'results':state.game.current?'question':'board');toast(t('saveImported'));
+      });
       confirmModal('loadSaveConfirm','loadSaveDesc',apply,false,'confirmLoadSave');
-    } catch(err) {console.error(err);openModal({type:'error',errors:[{path:file.name,...ImportErrors.resolveImportError(err,'save')}]});}
+    } catch(err) {if(!tasks.isCurrent(token))return;console.error(err);openModal({type:'error',errors:[{path:file.name,...ImportErrors.resolveImportError(err,'save')}]});}
   }
   document.addEventListener('click',event=>{
     const target=event.target.closest('[data-action]');
     audio.unlock();
     if(!target||target.disabled)return;
+    // A double click must not activate the new control rendered beneath it.
+    if(event.detail>1){event.preventDefault();return;}
     if(target.dataset.action==='option'&&event.detail!==0&&!window.getSelection()?.isCollapsed)return;
     event.preventDefault();audio.play('click');
-    Promise.resolve(action(target)).catch(err=>{console.error(err);toast(t('actionFailed'),6000);});
+    Promise.resolve(action(target)).catch(actionError);
   });
+  function actionError(error){console.error(error);toast(t('actionFailed'),6000);}
   document.addEventListener('pointerover',event=>{
     const target=event.target.closest('button:not(:disabled),a.btn');
     if(target&&!target.contains(event.relatedTarget))audio.play('hover');
@@ -3919,9 +4137,9 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
   document.addEventListener('compositionend',event=>{
     if(event.target.dataset.name!==undefined)updatePlayerName(event.target);
   });
-  $('#save-input').addEventListener('change',event=>{const file=event.target.files[0];event.target.value='';importSaveFile(file);});
-  $('#pack-input').addEventListener('change',event=>{const files=[...event.target.files];event.target.value='';importFiles(files);});
-  $('#deletions-input').addEventListener('change',event=>{const file=event.target.files[0];event.target.value='';importDeletions(file);});
+  $('#save-input').addEventListener('change',event=>{const file=event.target.files[0];event.target.value='';void importSaveFile(file).catch(actionError);});
+  $('#pack-input').addEventListener('change',event=>{const files=[...event.target.files];event.target.value='';void importFiles(files).catch(actionError);});
+  $('#deletions-input').addEventListener('change',event=>{const file=event.target.files[0];event.target.value='';void importDeletions(file).catch(actionError);});
   document.addEventListener('keydown',event=>{
     if(event.key==='Tab'&&state.modal){
       const nodes=[...dialog.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled),[tabindex="0"]')].filter(el=>el.getClientRects().length);
@@ -3941,15 +4159,14 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
     if(event.key!==HIDDEN_STORAGE)return;
     try{
       const value=JSON.parse(event.newValue||'{}');if(!value||Array.isArray(value)||typeof value!=='object')return;
-      state.hidden=Archive.normalizeHidden(value);
-      if(state.game?.current&&isHidden(state.game.pack.id,state.game.current.qid))state.game.current=null;
-      render();
+      const hidden=Archive.normalizeHidden(value);
+      if(busy())pendingHidden=hidden;else applyHidden(hidden);
     }catch(_){}
   });
   document.fonts.addEventListener('loadingdone',()=>{flowCache.clear();layoutFlows(main);if(state.modal)layoutFlows(dialog);syncKeyboard();});
   resizeStage();
   window.addEventListener('pagehide',persist);
   document.addEventListener('fullscreenchange',()=>{header();syncKeyboard();});
-  rememberFinishedGame();
   render();
+  if(restoreFailed)toast(t('cacheRestoreFailed'),9000);
 })();
