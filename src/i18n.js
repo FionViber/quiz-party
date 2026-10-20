@@ -555,6 +555,11 @@ window.NeoI18n = {
     "本地保存失败。关闭游戏前，请导出需要保留的数据：存档在主界面导出，题包和隐藏记录在题库导出。",
     "本機儲存失敗。關閉遊戲前，請匯出需要保留的資料：存檔在主畫面匯出，題包和隱藏紀錄在題庫匯出。"
   ],
+  "cacheRestoreFailed": [
+    "The saved game could not be restored. Import its original question pack and reopen the game, or import a game save.",
+    "暂时无法恢复上次对局。请导入该局使用的原题包后重新打开游戏，或导入存档继续。",
+    "暫時無法恢復上次對局。請匯入該局使用的原題包後重新開啟遊戲，或匯入存檔繼續。"
+  ],
   "replacePack": [
     "Replace existing packs?",
     "替换已有题包？",

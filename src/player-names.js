@@ -4,7 +4,12 @@
   const LIMIT = 12;
   const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, {granularity:'grapheme'}) : null;
   function normalize(value, trim = false) {
-    const text = String(value ?? '').replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, '').normalize('NFC');
+    let text = String(value ?? '').replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, '').normalize('NFC');
+    // Leading padding cannot be meaningful in a player name and must be
+    // removed before the live 12-grapheme limit. Keep trailing and internal
+    // spaces while the field is being edited; the committed form trims both
+    // ends.
+    text = trim ? text.trim() : text.replace(/^\s+/, '');
     const parts = segmenter ? Array.from(segmenter.segment(text), item => item.segment) : Array.from(text);
     // Also bound pathological combining sequences while keeping ordinary names intact.
     let result = '';
@@ -12,7 +17,7 @@
       if (result.length + part.length > 120) break;
       result += part;
     }
-    return trim ? result.trim() : result;
+    return result;
   }
   const api = {LIMIT, normalize};
   if (typeof module === 'object' && module.exports) module.exports = api;

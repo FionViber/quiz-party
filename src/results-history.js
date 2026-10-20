@@ -41,7 +41,7 @@ function snapshot(game,recordedAt=new Date().toISOString()) {
   validateRecord(out);return out;
 }
 function validateRecord(raw){
-  if(!isObject(raw)||raw.schemaVersion!==SCHEMA_VERSION||typeof raw.id!=='string'||raw.id.length<1||raw.id.length>160||typeof raw.recordedAt!=='string'||!Number.isFinite(Date.parse(raw.recordedAt))||!isObject(raw.game)||raw.game.finished!==true||typeof raw.game.id!=='string'||raw.game.id!==raw.id||!['together','buzz','turns'].includes(raw.game.mode)||!isObject(raw.game.pack)||typeof raw.game.pack.id!=='string'||typeof raw.game.pack.version!=='string'||!isObject(raw.game.pack.title)||['en','zh-Hans','zh-Hant'].some(l=>typeof raw.game.pack.title[l]!=='string'||!raw.game.pack.title[l].trim())||!Number.isInteger(raw.game.questionTarget)||raw.game.questionTarget<1||!Array.isArray(raw.game.players)||raw.game.players.length<2||raw.game.players.length>8||!Array.isArray(raw.game.questionVariants)||!Array.isArray(raw.game.history)||raw.game.current!==null||JSON.stringify(raw).length>MAX_JSON)throw historyError('Invalid results history');
+  if(!isObject(raw)||raw.schemaVersion!==SCHEMA_VERSION||typeof raw.id!=='string'||raw.id.length<1||raw.id.length>160||typeof raw.recordedAt!=='string'||!Number.isFinite(Date.parse(raw.recordedAt))||!isObject(raw.game)||raw.game.finished!==true||typeof raw.game.id!=='string'||raw.game.id!==raw.id||!['together','buzz','turns'].includes(raw.game.mode)||!isObject(raw.game.pack)||typeof raw.game.pack.id!=='string'||typeof raw.game.pack.version!=='string'||!Number.isInteger(raw.game.pack.schemaVersion)||![1,2,3].includes(raw.game.pack.schemaVersion)||!isObject(raw.game.pack.title)||['en','zh-Hans','zh-Hant'].some(l=>typeof raw.game.pack.title[l]!=='string'||!raw.game.pack.title[l].trim())||!Number.isInteger(raw.game.questionTarget)||raw.game.questionTarget<1||!Array.isArray(raw.game.players)||raw.game.players.length<2||raw.game.players.length>8||!Array.isArray(raw.game.questionVariants)||raw.game.questionVariants.length!==raw.game.questionTarget||!Array.isArray(raw.game.history)||raw.game.history.length>raw.game.questionTarget||raw.game.current!==null||JSON.stringify(raw).length>MAX_JSON)throw historyError('Invalid results history');
   if(!validTimes(raw.game))throw historyError('Invalid results history');
   const C=core(), variants=new Map();
   if(!C.SUPPORTED_RULES_VERSIONS.includes(raw.game.rulesVersion)) throw historyError('Invalid results history');
@@ -54,8 +54,8 @@ function validateRecord(raw){
   const ids=new Set();
   for(const h of raw.game.history){
     if(!isObject(h)||typeof h.qid!=='string'||ids.has(h.qid)||!variants.has(h.qid)||typeof h.level!=='number'||typeof h.type!=='string'||typeof h.points!=='number'||typeof h.voided!=='boolean'||!Array.isArray(h.deltas)||h.deltas.length!==raw.game.players.length||!h.deltas.every(Number.isFinite)||!Array.isArray(h.judgments)||h.judgments.length!==raw.game.players.length||h.judgments.some(v=>v!==null&&typeof v!=='boolean'))throw historyError('Invalid results history');
-    const q=variants.get(h.qid);if(h.level!==q.level||h.type!==q.type||h.points!==q.points)throw historyError('Invalid results history');
-    if(h.answerer!==null&&!Number.isInteger(h.answerer))throw historyError('Invalid results history');
+    const q=variants.get(h.qid);if(h.level!==q.level||h.type!==q.type||h.points!==q.points||h.key!==`${raw.game.pack.id}::${h.qid}`)throw historyError('Invalid results history');
+    if(h.answerer!==null&&(!Number.isInteger(h.answerer)||h.answerer<0||h.answerer>=raw.game.players.length))throw historyError('Invalid results history');
     if(h.selected!==null&&typeof h.selected!=='string')throw historyError('Invalid results history');
     if(q.type==='choice'&&h.selected!==null&&!q.options.includes(h.selected))throw historyError('Invalid results history');
     if(q.type==='open'&&h.selected!==null)throw historyError('Invalid results history');
@@ -64,7 +64,24 @@ function validateRecord(raw){
   }
   return raw;
 }
-function normalize(value,{strict=true}={}) {if(value===undefined||value===null)return [];if(!Array.isArray(value))throw historyError('Invalid results history');const ids=new Set();return value.map(item=>{let copy;try{copy=clone(item);}catch(_){throw historyError('Invalid results history');}if(ids.has(copy?.id))throw historyError('Invalid results history');ids.add(copy?.id);if(copy?.game?.history)copy.game.history=cleanHistory(copy.game.history);validateRecord(copy);return copy;});}
+function normalize(value,{strict=true}={}) {
+ if(value===undefined||value===null)return [];
+ if(!Array.isArray(value))throw historyError('Invalid results history');
+ const ids=new Map(),out=[];
+ for(const item of value){
+   let copy;
+   try{
+     copy=clone(item);
+     if(copy?.game?.history)copy.game.history=cleanHistory(copy.game.history);
+     validateRecord(copy);
+   }catch(_){if(strict)throw historyError('Invalid results history');continue;}
+   if(ids.has(copy.id)){
+     if(strict)throw historyError('Invalid results history');
+     out[ids.get(copy.id)]=copy;
+   }else{ids.set(copy.id,out.length);out.push(copy);}
+ }
+ return out;
+}
 function upsert(list,game,recordedAt=new Date().toISOString()) {const out=normalize(list),item=snapshot(game,recordedAt),index=out.findIndex(x=>x.id===item.id);if(index>=0)out[index]=item;else out.push(item);return out;}
 function find(list,id){return normalize(list).find(x=>x.id===id)||null;}
 const api={SCHEMA_VERSION,MAX_JSON,snapshot,normalize,upsert,find,validateRecord};root.NeoResultsHistory=api;

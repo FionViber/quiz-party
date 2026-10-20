@@ -1,7 +1,7 @@
 /* Portable and versioned saves. No filesystem permissions or server APIs. */
 (function (root) {
 'use strict';
-const SAVE_VERSION=2, READER_VERSION=6, APP_VERSION='5.9.0';
+const SAVE_VERSION=2, READER_VERSION=6, APP_VERSION='5.10.0';
 const ResultsHistory=(typeof module!=='undefined'&&module.exports)?require('./results-history.js'):root.NeoResultsHistory;
 const PlayerNames=(typeof module!=='undefined'&&module.exports)?require('./player-names.js'):root.NeoPlayerNames;
 const Clock=(typeof module!=='undefined'&&module.exports)?require('./game-clock.js'):root.NeoGameClock;
@@ -79,11 +79,14 @@ function inspectSave(doc,packs,core) {
  const identity=doc.questionPack;
  if(!Object.prototype.hasOwnProperty.call(identity,'id')||!Object.prototype.hasOwnProperty.call(identity,'version')||!Object.prototype.hasOwnProperty.call(identity,'schemaVersion')||!Object.prototype.hasOwnProperty.call(identity,'fingerprint')||identity.id==null||identity.version==null||identity.schemaVersion==null||identity.fingerprint==null)throw archiveError('saveIncomplete','Incomplete save');
  if(typeof identity.id!=='string'||!identity.id.trim()||typeof identity.version!=='string'||!identity.version.trim()||!Number.isInteger(identity.schemaVersion)||identity.schemaVersion<1||typeof identity.fingerprint!=='string'||!/^[0-9a-f]{16}-\d+$/.test(identity.fingerprint))throw archiveError('saveFormatInvalid','Invalid save format');
- const pack=packs.find(p=>p.id===identity.id);
- if(!pack) throw archiveError('savePackMissing','Required question pack is not installed: '+identity.id,{packId:identity.id});
- if(pack.version!==identity.version)throw archiveError('savePackVersionMismatch','Question pack version does not match. Save expects '+identity.version+', installed '+String(pack.version),{packId:identity.id,expectedVersion:identity.version,installedVersion:pack.version});
- if(pack.schemaVersion!==identity.schemaVersion)throw archiveError('savePackSchemaMismatch','Question pack schema does not match',{packId:identity.id});
- if(fingerprint(pack)!==identity.fingerprint)throw archiveError('savePackContentMismatch','Question pack content differs from this save, even though the version string matches',{packId:identity.id});
+ const candidates=Array.isArray(packs)?packs.filter(p=>isObject(p)&&p.id===identity.id):[];
+ if(!candidates.length) throw archiveError('savePackMissing','Required question pack is not installed: '+identity.id,{packId:identity.id});
+ const versionMatches=candidates.filter(p=>p.version===identity.version);
+ if(!versionMatches.length){const installedVersions=[...new Set(candidates.map(p=>String(p.version)))];throw archiveError('savePackVersionMismatch','Question pack version does not match. Save expects '+identity.version,{packId:identity.id,expectedVersion:identity.version,installedVersion:installedVersions.join(', '),installedVersions});}
+ const schemaMatches=versionMatches.filter(p=>p.schemaVersion===identity.schemaVersion);
+ if(!schemaMatches.length)throw archiveError('savePackSchemaMismatch','Question pack schema does not match',{packId:identity.id,expectedSchemaVersion:identity.schemaVersion,installedSchemaVersions:versionMatches.map(p=>p.schemaVersion)});
+ const pack=schemaMatches.find(p=>fingerprint(p)===identity.fingerprint);
+ if(!pack)throw archiveError('savePackContentMismatch','Question pack content differs from this save, even though the version string matches',{packId:identity.id,expectedFingerprint:identity.fingerprint});
  const g=JSON.parse(JSON.stringify(doc.state.game));g.pack=JSON.parse(JSON.stringify(pack));
  if(Clock&&!Clock.validate(g))throw archiveError('saveRoundStateInvalid','Invalid game timestamps');
  // Migrate v1 saves that used the whole allocated board without a round target.
@@ -121,11 +124,22 @@ function inspectSave(doc,packs,core) {
      if(!committedHistoryIds.has(c.qid))throw archiveError('saveCommittedScoreMissing','Missing committed score');
      const committed=g.history.find(h=>h.qid===c.qid&&!h.voided);
      if(!committed||committed.judgments.some((v,i)=>v!==c.judgments[i]))throw archiveError('saveActiveScoreMismatch','Active score does not match history');
+     if(g.mode==='turns'){
+       const latest=historyLastCommitted(g.history);
+       if(!latest||latest.qid!==c.qid)throw archiveError('saveActiveScoreMismatch','Active turn score is not the latest committed score');
+     }
+   }
+   if(g.mode==='turns'&&c.phase==='judge'&&g.history.some(h=>h.qid===c.qid&&!h.voided)){
+     throw archiveError('saveActiveQuestionInvalid','A turn question cannot be judged again after it has been scored');
    }
  }
  let hidden;try{hidden=normalizeHidden(doc.state.hidden,true);}catch(err){if(err.code==='saveHiddenRecordsInvalid')throw err;throw archiveError('saveHiddenRecordsInvalid',err.message);}
  const resultsHistory=ResultsHistory?ResultsHistory.normalize(doc.state.resultsHistory,{strict:true}):[];
  return {game:g,lang:core.LANGUAGES.includes(doc.state.lang)?doc.state.lang:'zh-Hans',prefs:isObject(doc.state.prefs)?doc.state.prefs:{},hidden,activePack:pack.id,setup:isObject(doc.state.setup)?doc.state.setup:null,resultsHistory};
+}
+function historyLastCommitted(history){
+ for(let i=history.length-1;i>=0;i--)if(!history[i].voided)return history[i];
+ return null;
 }
 const api={SAVE_VERSION,READER_VERSION,APP_VERSION,fingerprint,exportSave,normalizeHidden,inspectSave};
 root.NeoArchive=api;

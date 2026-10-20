@@ -1,7 +1,12 @@
 /* Game duration helpers. A finished legacy game without an end timestamp has no fabricated duration. */
 (function(root){
 'use strict';
-function time(value){const n=typeof value==='number'?value:Date.parse(value);return Number.isFinite(n)?n:null;}
+function time(value){
+ if(typeof value==='number')return Number.isFinite(value)?value:null;
+ if(value instanceof Date){const n=value.getTime();return Number.isFinite(n)?n:null;}
+ if(typeof value!=='string')return null;
+ const n=Date.parse(value);return Number.isFinite(n)?n:null;
+}
 function duration(game,now=Date.now()){
  if(!game||typeof game!=='object')return null;
  const start=time(game.startedAt);if(start===null)return null;

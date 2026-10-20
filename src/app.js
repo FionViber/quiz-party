@@ -2,7 +2,7 @@
 (async function () {
   'use strict';
   const C = window.NeoCore, DICT = window.NeoI18n, audio = window.NeoAudio, Archive = window.NeoArchive, Stats = window.NeoStats, ResultsHistory = window.NeoResultsHistory, Cache = window.NeoCache, ImportErrors = window.NeoImportErrors;
-  const Names = window.NeoPlayerNames, Categories=window.NeoCategoryFilter, Clock=window.NeoGameClock;
+  const Names = window.NeoPlayerNames, Categories=window.NeoCategoryFilter, Clock=window.NeoGameClock, Motion=window.NeoMotion;
   const STORAGE = 'quizparty.release.v58';
   const HIDDEN_STORAGE = 'quizparty.hidden.v58';
   const LANG_NAMES = {en: 'English', 'zh-Hans': '简体中文', 'zh-Hant': '繁體中文'};
@@ -31,13 +31,11 @@
   let saved;
   try { saved = JSON.parse(localStorage.getItem(STORAGE) || '{}'); } catch (_) { saved = {}; }
   if (!saved || typeof saved !== 'object' || Array.isArray(saved)) saved = {};
-  let storedImports=[], cachedGamePack=null;
-  try {
-    [storedImports,cachedGamePack]=await Promise.all([window.NeoPackStorage.read(),window.NeoPackStorage.readGamePack()]);
-  } catch (_) { /* Built-in play remains available when browser storage is disabled. */ }
-  const builtins = (window.NEO_BUILTIN || []).map(C.normalizePack);
-  if(cachedGamePack){try{cachedGamePack=C.validatePack(cachedGamePack).length?null:C.normalizePack(cachedGamePack);}catch(_){cachedGamePack=null;}}
-  const imported = storedImports.filter(p => C.validatePack(p).length === 0).map(C.normalizePack);
+  const reads=await Promise.allSettled([window.NeoPackStorage.read(),window.NeoPackStorage.readGamePacks()]);
+  const builtins=(window.NEO_BUILTIN||[]).map(C.normalizePack);
+  const validPacks=value=>(Array.isArray(value)?value:[]).filter(p=>C.validatePack(p).length===0).map(C.normalizePack);
+  const imported=[...new Map(validPacks(reads[0].status==='fulfilled'?reads[0].value:[]).map(p=>[p.id,p])).values()];
+  let cachedGamePacks=validPacks(reads[1].status==='fulfilled'?reads[1].value:[]);
   let packs = [...builtins.filter(p => !imported.some(a => a.id === p.id)), ...imported];
   const state = {
     lang: C.LANGUAGES.includes(saved.lang) ? saved.lang : 'zh-Hans',
@@ -48,10 +46,10 @@
     library: {filter:'active', query:'', from:'home', scope:'all'}, modal: null, flowPages: {}
   };
   state.boardCursor = null;
-  try { state.resultsHistory = ResultsHistory.normalize(saved.resultsHistory); }
+  try { state.resultsHistory = ResultsHistory.normalize(saved.resultsHistory,{strict:false}); }
   catch (_) { state.resultsHistory = []; }
   state.resultHistoryId = null;
-  let exportingResults = false, storingPack = false;
+  let restoreFailed=false;
   try {
     const storedHidden = JSON.parse(localStorage.getItem(HIDDEN_STORAGE) || 'null');
     if (storedHidden && typeof storedHidden === 'object' && !Array.isArray(storedHidden)) state.hidden = storedHidden;
@@ -61,7 +59,7 @@
   state.hidden = Archive.normalizeHidden(state.hidden);
   try {
     if (saved.game) {
-      const game = Cache.decodeGame(saved.game,[...packs,...(cachedGamePack?[cachedGamePack]:[])],Archive);
+      const game = Cache.decodeGame(saved.game,knownPacks(),Archive);
       if(C.validatePack(game.pack).length)throw new Error('Invalid cached pack');
       if (!Number.isInteger(game.questionTarget)) game.questionTarget = game.board?.length;
       const portable = Archive.exportSave({...state, game});
@@ -69,10 +67,22 @@
       state.game.pack=game.pack;
       if (state.game.current && Object.hasOwn(state.hidden,C.key(game.pack.id,game.current.qid))) state.game.current = null;
     }
-  } catch (_) { /* A damaged cache must not prevent starting or importing a game. */ }
+  } catch (_) { restoreFailed=true; }
   const $ = s => document.querySelector(s);
   const main = $('#main'), dialog = $('#dialog'), modalLayer = $('#modal-layer');
-  let moving = false, toastTimer, cacheWarning = false, lastFocus, setupPlanCache;
+  let moving = false, toastTimer, cacheWarning = false, lastFocus, setupPlanCache, modalClosing=false, modalRevision=0, pendingHidden=null;
+  const historyFailures=new Set();
+  let busyFocus;
+  const tasks=window.NeoAsyncTasks.create(locked=>{
+    if(locked)busyFocus=document.activeElement;
+    syncInteractivity();
+    if(!locked){
+      flushHidden();
+      syncKeyboard();
+      const focus=busyFocus?.isConnected&&!busyFocus.closest('[inert]')?busyFocus:(state.modal?dialog.querySelector('button,a,input'):main);
+      focus?.focus({preventScroll:true});busyFocus=null;
+    }
+  });
   const flowData = new WeakMap(), flowCache = new Map();
   const BOARD_PAGE_SIZE = 48; // Eight columns × six rows: no board scrolling.
   let libraryRows = [];
@@ -83,6 +93,22 @@
   }
   function B(action, label, cls = '', extra = '', symbol = '') { return `<button type="button" class="btn ${cls}" data-action="${action}" ${extra}>${symbol ? icon(symbol) : ''}${e(label)}</button>`; }
   function L(action, label, symbol = '', extra = '') { return `<button type="button" class="utility" data-action="${action}" ${extra}>${symbol ? icon(symbol) : ''}<span class="optional-label">${e(label)}</span></button>`; }
+  function knownPacks(){return [...builtins,...packs,...cachedGamePacks];}
+  function isBuiltin(pack){
+    const wanted=Cache.packIdentity(pack,Archive);
+    return builtins.some(p=>{const x=Cache.packIdentity(p,Archive);return x.id===wanted.id&&x.version===wanted.version&&x.schemaVersion===wanted.schemaVersion&&x.fingerprint===wanted.fingerprint;});
+  }
+  function busy(){return moving||modalClosing||tasks.busy;}
+  function syncInteractivity(){
+    const locked=tasks.busy||modalClosing;
+    $('#header').inert=!!state.modal||locked;main.inert=!!state.modal||locked;dialog.inert=locked;
+  }
+  function applyHidden(hidden){
+    state.hidden=hidden;
+    if(state.game?.current&&isHidden(state.game.pack.id,state.game.current.qid))state.game.current=null;
+    render();persist();
+  }
+  function flushHidden(){if(!busy()&&pendingHidden){const hidden=pendingHidden;pendingHidden=null;applyHidden(hidden);}}
   function getPack() { return packs.find(p => p.id === state.activePack) || packs[0]; }
   function currentQ() { const g=state.game, q=g?.pack.questions.find(q=>q.id===g.current?.qid); return q ? C.variant(q,g.current.level) : null; }
   function isHidden(packId, qid) { return Object.hasOwn(state.hidden, C.key(packId, qid)); }
@@ -93,7 +119,7 @@
     try { localStorage.setItem(HIDDEN_STORAGE, JSON.stringify(state.hidden)); }
     catch (_) { if (!cacheWarning) { cacheWarning = true; setTimeout(() => toast(t('cacheFail'), 9000), 100); } }
     try {
-      localStorage.setItem(STORAGE, JSON.stringify({lang:state.lang,prefs:state.prefs,activePack:state.activePack,hidden:state.hidden,game:state.game?Cache.encodeGame(state.game,[...packs,...(cachedGamePack?[cachedGamePack]:[])],Archive):null,setup:state.setup,resultsHistory:state.resultsHistory}));
+      localStorage.setItem(STORAGE, JSON.stringify({lang:state.lang,prefs:state.prefs,activePack:state.activePack,hidden:state.hidden,game:state.game?Cache.encodeGame(state.game,knownPacks(),Archive):(restoreFailed?saved.game:null),setup:state.setup,resultsHistory:state.resultsHistory}));
     } catch (_) { if (!cacheWarning) { cacheWarning = true; setTimeout(() => toast(t('cacheFail'), 9000), 100); } }
   }
 
@@ -118,8 +144,19 @@
     $('.skip-link').textContent = t('skip');
   }
 
-  function render(animate = false) {
-    header();
+  function reconcileView(){
+    const g=state.game;
+    if(state.view==='question'&&(!currentQ()||isHidden(g.pack.id,g.current.qid))){if(g)g.current=null;state.view=g?'board':'home';}
+    if(state.view==='board'){
+      if(!g)state.view='home';
+      else if(g.current)state.view='question';
+      else if(!remaining(g).length){Clock.finish(g);state.resultHistoryId=null;state.view='results';}
+    }
+    if(state.view==='results'&&!resultGame())state.view='home';
+    rememberFinishedGame();
+  }
+  function render() {
+    reconcileView();header();
     const views = {home:homeView,setup:setupView,board:boardView,question:questionView,library:libraryView,results:resultsView};
     main.innerHTML = (views[state.view] || homeView)();
     main.className = 'view-' + state.view;
@@ -127,14 +164,14 @@
     if (state.modal) renderDialog();
     layoutFlows(main);
     initNeoScrollers(main);
-    syncKeyboard();
+    syncInteractivity();syncKeyboard();
   }
 
   function syncKeyboard() {
     window.NeoKeyboard.refresh({
       root:main, header:$('#header'), dialog:state.modal?dialog:null,
       context:state.modal?'modal-'+state.modal.type:state.view+'-'+(state.game?.current?.phase||''),
-      busy:()=>moving||exportingResults||storingPack||(!state.modal&&!modalLayer.hidden),
+      busy,
       contextObj:{
         reservedCodes:state.view==='question'&&state.game?.current?.phase==='answer'&&!state.modal?Array.from({length:6},(_,i)=>'Digit'+(i+1)):[],
         onEscapeEditing:()=>{document.activeElement?.blur();(state.modal?dialog:main).focus({preventScroll:true});},
@@ -175,7 +212,7 @@
       const control=event.target?.closest?.('button,a[href]');
       if(control&&control.dataset.action!=='pick')return false;
       const slot=slots.find(s=>s.qid===state.boardCursor&&!s.disabled);
-      if(slot){audio.unlock();audio.play('click');pick(slot.qid,slot.level);}
+      if(slot){audio.unlock();audio.play('click');void pick(slot.qid,slot.level).catch(actionError);}
       return true;
     }
     if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.code))return false;
@@ -188,20 +225,18 @@
     return true;
   }
 
-  async function go(view, change) {
-    if (moving) return;
-    if (state.modal) closeModal(true);
-    moving = true;
-    const curtain = $('#curtain');
-    const commit = () => { if (change) change(); if(view==='library'&&state.view!=='library')state.libraryScroll=0; state.view = view; render(); window.scrollTo(0,0); main.focus({preventScroll:true}); persist(); };
-    try {
-      if (reduced() || !curtain.animate) { commit(); return; }
-      curtain.hidden = false;
-      const into = curtain.animate([{transform:'translateY(100%)'},{transform:'translateY(0)'}], {duration:110,fill:'forwards',easing:'ease-in'});
-      await into.finished; commit();
-      const out = curtain.animate([{transform:'translateY(0)'},{transform:'translateY(-105%)'}], {duration:170,fill:'forwards',easing:'ease-out'});
-      await out.finished; into.cancel(); out.cancel();
-    } finally { curtain.hidden = true; moving = false; }
+  async function go(view,change){
+    if(moving)return;
+    tasks.invalidate();closeModal(true);moving=true;
+    const curtain=$('#curtain');
+    try{
+      if(!reduced())curtain.hidden=false;
+      await Motion.play(curtain,[{transform:'translateY(100%)'},{transform:'translateY(0)'}],{duration:110,reduced:reduced()});
+      if(change)change();
+      if(view==='library'&&state.view!=='library')state.libraryScroll=0;
+      state.view=view;render();window.scrollTo(0,0);persist();
+      await Motion.play(curtain,[{transform:'translateY(0)'},{transform:'translateY(-105%)'}],{duration:170,reduced:reduced()});
+    }finally{curtain.hidden=true;moving=false;syncInteractivity();if(!tasks.busy)main.focus({preventScroll:true});flushHidden();}
   }
   function modeStartButton(mode) {
     return `<button type="button" class="mode-start" data-action="mode" data-mode="${e(mode)}" data-key-preferred="Digit${C.MODES.indexOf(mode)+1}"><span>${e(t('play'))}</span>${icon('arrow')}</button>`;
@@ -285,8 +320,7 @@
     return `<section class="neo-scroll-frame library-scroll" data-scroll-kind="library"><div class="neo-scroll-viewport" tabindex="0" role="region" aria-label="${e(t('library'))}"><div class="neo-scroll-content">${inner}</div></div><div class="neo-scroll-rail" aria-hidden="true"><div class="neo-scroll-thumb"></div></div></section>`;
   }
   function boardView() {
-    const g=state.game;if(!g){state.view='home';return homeView();}
-    if(!remaining(g).length){Clock.finish(g);g.current=null;state.view='results';state.resultHistoryId=null;return resultsView();}
+    const g=state.game;
     const qmap=new Map(g.pack.questions.map(q=>[q.id,q]));
     const seen=new Set(g.seen);
     const visible=g.board.map((b,i)=>({...b,number:i+1})).filter(b=>!isHidden(g.pack.id,b.qid));
@@ -423,7 +457,6 @@
 
   function questionView() {
     const g=state.game,q=currentQ(),cur=g?.current;
-    if(!q||isHidden(g.pack.id,q.id)){if(g)g.current=null;state.view=g?'board':'home';return g?boardView():homeView();}
     // A V2 save can be paused before choosing a spoken-answer contestant.
     // Keep recorded answerers, but assign an unanswered turn to the current player.
     if(g.mode==='turns'&&cur.answerer===null)cur.answerer=C.currentPlayer(g);
@@ -501,12 +534,13 @@
   }
   function resultGame(){return state.resultHistoryId?state.resultsHistory.find(item=>item.id===state.resultHistoryId)?.game:state.game;}
   function rememberFinishedGame(){
-    const g=state.game;if(!g?.finished||g.current)return;
+    const g=state.game;if(!g?.finished||g.current||historyFailures.has(g.id))return;
     if(state.resultsHistory.some(item=>item.id===g.id))return;
-    state.resultsHistory=ResultsHistory.upsert(state.resultsHistory,g);persist();
+    try{state.resultsHistory=ResultsHistory.upsert(state.resultsHistory,g);persist();}
+    catch(error){historyFailures.add(g.id);console.error(error);toast(t('cacheFail'),9000);}
   }
   function resultsView() {
-    rememberFinishedGame();const g=resultGame();if(!g){state.view='home';return homeView();}
+    const g=resultGame();
     const report=window.NeoResultsView.render({game:g,t,e,packTitle,Stats,C,clock:Clock,language:state.lang});
     return report+`<div class="results-controls"><span>${e(packTitle(g.pack))} · ${e(t('roundProgress',{n:activeHistory(g).length,total:g.questionTarget||g.board?.length||0}))}</span><div class="row">${B('home',t('home'),'small','','back')}${B('results-history',t('resultsHistory'),'small','','trophy')}${B('export-results',t('resultsExport'),'small','','download')}${B('replay',t('replay'),'primary small','','refresh')}</div></div>`;
   }
@@ -521,19 +555,25 @@
     const level=state.view==='question'&&state.game?.current?.qid===qid ? state.game.current.level : C.levels(source)[0];
     return C.variant(source,level);
   }
-  function openModal(model) {
-    if(!state.modal)lastFocus=document.activeElement;
-    state.modal=model;modalLayer.hidden=false;$('#header').inert=true;main.inert=true;
-    renderDialog();
+  function openModal(model){
+    tasks.invalidate();modalRevision++;Motion.cancel(dialog);modalClosing=false;
+    if(!state.modal&&modalLayer.hidden)lastFocus=document.activeElement;
+    state.modal=model;modalLayer.hidden=false;syncInteractivity();renderDialog();
     dialog.querySelector('button,a,input')?.focus({preventScroll:true});
-    if(!reduced())dialog.animate([{transform:'translateY(22px)'},{transform:'translateY(0)'}],{duration:180,easing:'ease-out'});
+    void Motion.play(dialog,[{transform:'translateY(22px)'},{transform:'translateY(0)'}],{duration:180,reduced:reduced()});
   }
-
-  function closeModal(immediate=false) {
-    state.modal=null;const previousFocus=lastFocus;
-    const finish=()=>{if(!state.modal){modalLayer.hidden=true;$('#header').inert=false;main.inert=false;if(previousFocus?.isConnected)previousFocus.focus({preventScroll:true});syncKeyboard();}};
-    if(!immediate&&!reduced()&&!modalLayer.hidden)return dialog.animate([{transform:'translateY(0)'},{transform:'translateY(16px)'}],{duration:110,easing:'ease-in'}).finished.then(finish).catch(finish);
-    finish();
+  function closeModal(immediate=false){
+    if(!state.modal&&!modalClosing)return;
+    tasks.invalidate();const revision=++modalRevision,previousFocus=lastFocus;
+    state.modal=null;modalClosing=!immediate;Motion.cancel(dialog);syncInteractivity();
+    const finish=()=>{
+      if(revision!==modalRevision)return;
+      modalClosing=false;modalLayer.hidden=true;syncInteractivity();
+      if(previousFocus?.isConnected&&!tasks.busy)previousFocus.focus({preventScroll:true});
+      syncKeyboard();flushHidden();
+    };
+    if(immediate){finish();return;}
+    return Motion.play(dialog,[{transform:'translateY(0)'},{transform:'translateY(16px)'}],{duration:110,reduced:reduced()}).finally(finish);
   }
 
   function confirmModal(title,desc,callback,danger=false,confirmLabel='confirm') { openModal({type:'confirm',title,desc,callback,danger,confirmLabel}); }
@@ -605,7 +645,7 @@
     const commit=()=>go('setup',()=>{state.setup.mode=mode;});
     if(state.game&&!state.game.finished)confirmModal('newGameWarn','newGameDesc',commit,false,'confirmNewGameSetup');else commit();
   }
-  async function startGame() {
+  function startGame() {return tasks.run(async()=>{
     const pack=getPack(),count=normalizeRoundChoice(pack,state.setup.questionCount);
     if(count<12){toast(t('needTwelve'));return;}
     const plan=roundPlan(pack,count);
@@ -614,13 +654,13 @@
     const board=plan.board.map(slot=>({...slot}));
     if(!await retainGamePack(pack))return;
     return go('board',()=>{state.game={rulesVersion:4,id:'game-'+Date.now(),startedAt:new Date().toISOString(),mode:state.setup.mode,players,pack,questionTarget:count,board,seen:[],history:[],current:null,finished:false};setupPlanCache=null;state.resultHistoryId=null;state.boardPage=0;state.boardCursor=null;});
-  }
+  });}
   function pick(qid,level) {
     const g=state.game;
     const tile=g.board.find(x=>x.qid===qid&&x.level===level);
     if(!tile||g.seen.includes(qid)||isHidden(g.pack.id,qid))return;
     const q=C.variant(g.pack.questions.find(x=>x.id===qid),level);
-    go('question',()=>{state.boardCursor=qid;state.flowPages={};g.seen.push(q.id);g.current={qid:q.id,level:q.level,phase:'answer',selected:null,answerer:g.mode==='turns'?C.currentPlayer(g):null,judgments:Array(g.players.length).fill(null)};});
+    return go('question',()=>{state.boardCursor=qid;state.flowPages={};g.seen.push(q.id);g.current={qid:q.id,level:q.level,phase:'answer',selected:null,answerer:g.mode==='turns'?C.currentPlayer(g):null,judgments:Array(g.players.length).fill(null)};});
   }
   function revealAnswer() {
     const g=state.game,q=currentQ(),cur=g.current;
@@ -661,16 +701,16 @@
       if(finished){Clock.finish(g);audio.play('finish');}
     });
   }
-  function hideQuestion(packId,qid) {
+  async function hideQuestion(packId,qid) {
     const gamePack=state.game?.pack.id===packId?state.game.pack:null, catalogPack=packs.find(p=>p.id===packId);
     const source=state.view==='question'?(gamePack||catalogPack):(catalogPack||gamePack);
     const q=findQuestionSource(packId,qid);
     state.hidden[C.key(packId,qid)]={packId,questionId:qid,hiddenAt:new Date().toISOString(),packTitle:source?.title,prompts:q?Object.fromEntries(C.LANGUAGES.map(l=>[l,q.locales[l].prompt])):undefined};
     const g=state.game;closeModal(true);
     // Hiding affects availability, not scores that were already confirmed.
-    if(g&&g.pack.id===packId&&g.current?.qid===qid){g.current=null;if(state.view==='question')returnToBoard();else refresh();}
+    if(g&&g.pack.id===packId&&g.current?.qid===qid){g.current=null;if(state.view==='question')await returnToBoard();else refresh();}
     else refresh();
-    persist();toast(t('deletedToast'));
+    toast(t('deletedToast'));
   }
 
   function restoreQuestion(packId,qid) {
@@ -680,57 +720,54 @@
     const blob=new Blob([JSON.stringify(data,null,2)+'\n'],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
   }
-  async function retainGamePack(pack) {
-    const builtin=builtins.find(p=>p.id===pack.id&&Archive.fingerprint(p)===Archive.fingerprint(pack));
-    if(builtin){cachedGamePack=null;return true;}
-    storingPack=true;
-    try {await window.NeoPackStorage.writeGamePack(pack);cachedGamePack=pack;return true;}
+  async function retainGamePack(pack){
+    if(isBuiltin(pack))return true;
+    const previous=state.game?.pack&&!isBuiltin(state.game.pack)?state.game.pack:null;
+    try{await window.NeoPackStorage.writeGamePack(pack,previous);cachedGamePacks=previous?[pack,previous]:[pack];return true;}
     catch(error){openModal({type:'error',errors:[{path:packTitle(pack),...ImportErrors.resolveImportError(error,'pack')}]});return false;}
-    finally{storingPack=false;}
   }
   async function importFiles(files) {
     if(!files.length)return;
+    const token=tasks.beginRead();if(token===null)return;
     const incoming=[],errors=[];
     for(const f of files) {
       if(f.size>20*1024*1024){errors.push({path:f.name,message:t('fileLarge')});continue;}
       try {
-        const p=await ImportErrors.readJsonFile(f);
+        const p=await ImportErrors.readJsonFile(f);if(!tasks.isCurrent(token))return;
         const problems=C.validatePack(p);problems.forEach(err=>errors.push({...err,path:`${f.name} / ${err.path}`}));
         if(!problems.length)incoming.push(C.normalizePack(p));
-      } catch(err) {console.error(err);errors.push({path:f.name,...ImportErrors.resolveImportError(err,'pack')});}
+      } catch(err) {if(!tasks.isCurrent(token))return;console.error(err);errors.push({path:f.name,...ImportErrors.resolveImportError(err,'pack')});}
     }
+    if(!tasks.isCurrent(token))return;
     const seen=new Set();incoming.forEach(p=>{if(seen.has(p.id))errors.push({path:p.id,code:'duplicate'});seen.add(p.id);});
     if(errors.length){openModal({type:'error',errors});return;}
-    const apply=async()=>{
+    const apply=()=>tasks.run(async()=>{
       const candidate=[...imported];
       for(const p of incoming){const i=candidate.findIndex(x=>x.id===p.id),builtin=builtins.find(b=>b.id===p.id);if(builtin&&Archive.fingerprint(builtin)===Archive.fingerprint(p)){if(i>=0)candidate.splice(i,1);continue;}if(i>=0)candidate[i]=p;else candidate.push(p);}
-      storingPack=true;
       try{await window.NeoPackStorage.write(candidate);}
       catch(error){openModal({type:'error',errors:[{path:incoming.map(p=>p.id).join(', '),...ImportErrors.resolveImportError(error,'pack')}]});return;}
-      finally{storingPack=false;}
       imported.splice(0,imported.length,...candidate);
       packs=[...builtins.filter(p=>!imported.some(x=>x.id===p.id)),...imported];
       state.activePack=incoming[0].id;state.setup.questionCount=normalizeRoundChoice(getPack());refresh();toast(t('importOk',{n:incoming.length}));
-    };
-    if(incoming.some(p=>packs.some(x=>x.id===p.id)))confirmModal('replacePack','replaceDesc',apply,false,'confirmReplacePacks');else apply();
+    });
+    if(incoming.some(p=>packs.some(x=>x.id===p.id)))confirmModal('replacePack','replaceDesc',apply,false,'confirmReplacePacks');else return apply();
   }
   async function importDeletions(file) {
-    if(!file)return;
+    if(!file)return;const token=tasks.beginRead();if(token===null)return;
     try {
       if(file.size>20*1024*1024)throw ImportErrors.makeError('fileLarge');
-      const data=await ImportErrors.readJsonFile(file);
+      const data=await ImportErrors.readJsonFile(file);if(!tasks.isCurrent(token))return;
       const records=data.kind==='partyquiz-hidden'?data.hidden:data.kind==='partyquiz-deletions'?data.deleted:null;
       const pattern=/^[A-Za-z0-9._-]{1,120}$/;
       if(data.schemaVersion!==1||!Array.isArray(records)||!records.every(v=>v&&typeof v.packId==='string'&&typeof v.questionId==='string'&&pattern.test(v.packId)&&pattern.test(v.questionId)))throw ImportErrors.makeError('invalidHidden');
       const incoming=Archive.normalizeHidden(Object.fromEntries(records.map(r=>[C.key(r.packId,r.questionId),r])),true);
-      state.hidden=Object.assign(Object.create(null),state.hidden,incoming);
-      if(state.game?.current&&isHidden(state.game.pack.id,state.game.current.qid))state.game.current=null;
-      refresh();toast(t('importedDeletion'));
-    }catch(err){console.error(err);openModal({type:'error',errors:[{path:file.name,...ImportErrors.resolveImportError(err,'hidden')}]});}
+      applyHidden(Object.assign(Object.create(null),state.hidden,incoming));toast(t('importedDeletion'));
+    }catch(err){if(!tasks.isCurrent(token))return;console.error(err);openModal({type:'error',errors:[{path:file.name,...ImportErrors.resolveImportError(err,'hidden')}]});}
   }
 
   async function action(target) {
-    if(moving||exportingResults||storingPack)return;
+    if(busy()||target.isConnected===false)return;
+    if(state.modal?!dialog.contains(target):(!main.contains(target)&&!$('#header').contains(target)))return;
     const a=target.dataset.action,g=state.view==='results'?resultGame():state.game,cur=state.game?.current,q=currentQ();
     if(a==='results-history')return openModal({type:'history',page:0});
     if(a==='view-history'){if(!state.resultsHistory.some(item=>item.id===target.dataset.record))return;state.resultHistoryId=target.dataset.record;closeModal(true);return go('results');}
@@ -746,7 +783,6 @@
     if(a==='pack-picker')return openModal({type:'packs',context:target.dataset.context,page:0});
     if(a==='modal-prev'||a==='modal-next'){state.modal.page=(state.modal.page||0)+(a==='modal-prev'?-1:1);return renderDialog();}
     if(a==='select-pack'){
-      const m=state.modal;
       if(target.dataset.pack==='*')state.library.scope='all';else{state.activePack=target.dataset.pack;state.library.scope=target.dataset.pack;}
       state.libraryScroll=0;closeModal(true);return refresh();
     }
@@ -796,7 +832,7 @@
     if(a==='confirm-hide'){const m=state.modal;return hideQuestion(m.packId,m.qid);}
     if(a==='restore')return restoreQuestion(target.dataset.pack,target.dataset.qid);
     if(a==='close-modal')return closeModal();
-    if(a==='modal-confirm'){const cb=state.modal.callback;closeModal(true);return cb();}
+    if(a==='modal-confirm'&&state.modal?.type==='confirm'){const cb=state.modal.callback;closeModal(true);return cb();}
     if(a==='import'){$('#pack-input').click();return;}
     if(a==='export-pack'){const p=clone(getPack());return downloadJSON(p,builtins.some(b=>b.id===p.id)?'question-bank.json':p.id+'.json');}
     if(a==='export-deletions')return downloadJSON({schemaVersion:1,kind:'partyquiz-hidden',exportedAt:new Date().toISOString(),hidden:Object.values(state.hidden)},'question-hidden.json');
@@ -806,42 +842,43 @@
       return downloadJSON(Archive.exportSave({game:state.game,lang:state.lang,prefs:state.prefs,hidden:state.hidden,activePack:state.activePack,setup:state.setup,resultsHistory:state.resultsHistory}),`quiz-party-save-${Date.now()}.json`);
     }
     if(a==='import-save'){$('#save-input').click();return;}
-    if(a==='export-results'){
-      exportingResults=true;
+    if(a==='export-results')return tasks.run(async()=>{
       try{await window.NeoResultsExport.downloadElementPng($('#game-stage'),`quiz-party-results-${Date.now()}.png`);}
       catch(err){console.error(err);toast(t('resultsExportFailed'),6000);}
-      finally{exportingResults=false;}return;
-    }
+    });
   }
   async function importSaveFile(file) {
-    if(!file)return;
+    if(!file)return;const token=tasks.beginRead();if(token===null)return;
     try {
       if(file.size>32*1024*1024)throw ImportErrors.makeError('saveFileLarge');
-      const saved=await ImportErrors.readJsonFile(file);
-      const checked=Archive.inspectSave(saved,packs,C);
-      const apply=async()=>{
+      const saved=await ImportErrors.readJsonFile(file);if(!tasks.isCurrent(token))return;
+      const checked=Archive.inspectSave(saved,knownPacks(),C);
+      const apply=()=>tasks.run(async()=>{
         if(!await retainGamePack(checked.game.pack))return;
         state.game=checked.game;
-        state.game.pack=packs.find(p=>p.id===checked.game.pack.id)||checked.game.pack;state.lang=checked.lang;state.resultHistoryId=null;
+        historyFailures.delete(state.game.id);state.lang=checked.lang;state.resultHistoryId=null;
         const merged=new Map(state.resultsHistory.map(item=>[item.id,item]));for(const item of checked.resultsHistory)merged.set(item.id,item);state.resultsHistory=[...merged.values()];
         state.prefs={sfx:checked.prefs.sfx!==false,music:checked.prefs.music===true,reduced:checked.prefs.reduced===true};
         state.hidden=checked.hidden;state.activePack=checked.activePack;
         if(checked.setup){state.setup={mode:C.MODES.includes(checked.setup.mode)?checked.setup.mode:checked.game.mode,count:checked.game.players.length,names:checked.game.players.concat(Array(8).fill('')).slice(0,8).map(n=>Names.normalize(n)),tagFilter:checked.setup.tagFilter};}
         state.setup.questionCount=normalizeRoundChoice(getPack(),checked.setup?.questionCount||checked.game.questionTarget||checked.game.board.length);
         state.boardPage=0;state.boardCursor=null;state.libraryScroll=0;state.flowPages={};
-        closeModal(true);go(state.game.finished?'results':state.game.current?'question':'board');persist();toast(t('saveImported'));
-      };
+        closeModal(true);await go(state.game.finished?'results':state.game.current?'question':'board');toast(t('saveImported'));
+      });
       confirmModal('loadSaveConfirm','loadSaveDesc',apply,false,'confirmLoadSave');
-    } catch(err) {console.error(err);openModal({type:'error',errors:[{path:file.name,...ImportErrors.resolveImportError(err,'save')}]});}
+    } catch(err) {if(!tasks.isCurrent(token))return;console.error(err);openModal({type:'error',errors:[{path:file.name,...ImportErrors.resolveImportError(err,'save')}]});}
   }
   document.addEventListener('click',event=>{
     const target=event.target.closest('[data-action]');
     audio.unlock();
     if(!target||target.disabled)return;
+    // A double click must not activate the new control rendered beneath it.
+    if(event.detail>1){event.preventDefault();return;}
     if(target.dataset.action==='option'&&event.detail!==0&&!window.getSelection()?.isCollapsed)return;
     event.preventDefault();audio.play('click');
-    Promise.resolve(action(target)).catch(err=>{console.error(err);toast(t('actionFailed'),6000);});
+    Promise.resolve(action(target)).catch(actionError);
   });
+  function actionError(error){console.error(error);toast(t('actionFailed'),6000);}
   document.addEventListener('pointerover',event=>{
     const target=event.target.closest('button:not(:disabled),a.btn');
     if(target&&!target.contains(event.relatedTarget))audio.play('hover');
@@ -869,9 +906,9 @@
   document.addEventListener('compositionend',event=>{
     if(event.target.dataset.name!==undefined)updatePlayerName(event.target);
   });
-  $('#save-input').addEventListener('change',event=>{const file=event.target.files[0];event.target.value='';importSaveFile(file);});
-  $('#pack-input').addEventListener('change',event=>{const files=[...event.target.files];event.target.value='';importFiles(files);});
-  $('#deletions-input').addEventListener('change',event=>{const file=event.target.files[0];event.target.value='';importDeletions(file);});
+  $('#save-input').addEventListener('change',event=>{const file=event.target.files[0];event.target.value='';void importSaveFile(file).catch(actionError);});
+  $('#pack-input').addEventListener('change',event=>{const files=[...event.target.files];event.target.value='';void importFiles(files).catch(actionError);});
+  $('#deletions-input').addEventListener('change',event=>{const file=event.target.files[0];event.target.value='';void importDeletions(file).catch(actionError);});
   document.addEventListener('keydown',event=>{
     if(event.key==='Tab'&&state.modal){
       const nodes=[...dialog.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled),[tabindex="0"]')].filter(el=>el.getClientRects().length);
@@ -891,15 +928,14 @@
     if(event.key!==HIDDEN_STORAGE)return;
     try{
       const value=JSON.parse(event.newValue||'{}');if(!value||Array.isArray(value)||typeof value!=='object')return;
-      state.hidden=Archive.normalizeHidden(value);
-      if(state.game?.current&&isHidden(state.game.pack.id,state.game.current.qid))state.game.current=null;
-      render();
+      const hidden=Archive.normalizeHidden(value);
+      if(busy())pendingHidden=hidden;else applyHidden(hidden);
     }catch(_){}
   });
   document.fonts.addEventListener('loadingdone',()=>{flowCache.clear();layoutFlows(main);if(state.modal)layoutFlows(dialog);syncKeyboard();});
   resizeStage();
   window.addEventListener('pagehide',persist);
   document.addEventListener('fullscreenchange',()=>{header();syncKeyboard();});
-  rememberFinishedGame();
   render();
+  if(restoreFailed)toast(t('cacheRestoreFailed'),9000);
 })();

@@ -77,6 +77,8 @@
     if (!el || !options) return false;
     const { flowData, flowPages, paintFlow } = options;
     if (!flowData || !flowPages || typeof paintFlow !== 'function') return false;
+    const amount = Number(delta);
+    if (!Number.isFinite(amount) || amount === 0) return false;
     const key = el.dataset.flowGroupRoot || el.dataset.flowGroup || groupKey(el);
     const root = el.closest('main, [role="dialog"], .modal, body') || document;
     const members = [...root.querySelectorAll(`.flow[data-flow-group="${CSS.escape(key)}"]`)]
@@ -85,7 +87,7 @@
     if (!members.length) return false;
     const maxPages = Math.max(...members.map(item => item.entry.pages.length));
     const current = Number.isInteger(flowPages[key]) ? flowPages[key] : 0;
-    const next = Math.max(0, Math.min(maxPages - 1, current + Number(delta || 0)));
+    const next = Math.max(0, Math.min(maxPages - 1, current + amount));
     flowPages[key] = next;
     members.forEach(item => {
       item.entry.index = Math.min(next, item.entry.pages.length - 1);

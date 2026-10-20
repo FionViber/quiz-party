@@ -56,6 +56,14 @@
   }
 
   function groupId(labels) {
+    // Keep the displayed labels in the identity. Hash-only IDs can merge two
+    // different tags after a collision (and the old separator was itself a
+    // possible source of ambiguity). encodeURIComponent keeps the ID safe in
+    // data attributes while making the mapping lossless and deterministic.
+    return `tag-${encodeURIComponent(JSON.stringify(LANGUAGES.map(language => labels[language])))}`;
+  }
+
+  function legacyGroupId(labels) {
     const signature = LANGUAGES.map(language => labels[language]).join('\u001f');
     return `tag-${hash(signature)}-${hash(signature, 2654435761)}`;
   }
@@ -73,7 +81,7 @@
       const id = groupId(labels);
       let group = groups.get(id);
       if (!group) {
-        group = { id, labels: Object.freeze({ ...labels }), count: 0, questionIds: [] };
+        group = { id, legacyId: legacyGroupId(labels), labels: Object.freeze({ ...labels }), count: 0, questionIds: [] };
         groups.set(id, group);
       }
       group.count += 1;
@@ -95,8 +103,21 @@
     const candidate = Array.isArray(selection)
       ? selection
       : (Array.isArray(selection.selectedIds) ? selection.selectedIds : []);
+    const groups = listGroups(pack);
     const known = new Set(all);
-    return Array.from(new Set(candidate.map(String))).filter(id => known.has(id));
+    const legacy = new Map();
+    for (const group of groups) {
+      const ids = legacy.get(group.legacyId) || [];
+      ids.push(group.id);
+      legacy.set(group.legacyId, ids);
+    }
+    const expanded = [];
+    for (const id of candidate.map(String)) {
+      const matches = legacy.get(id);
+      if (matches) expanded.push(...matches);
+      else expanded.push(id);
+    }
+    return Array.from(new Set(expanded)).filter(id => known.has(id));
   }
 
   function selectedGroupIds(pack, selection) {

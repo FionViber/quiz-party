@@ -44,7 +44,22 @@ window.NeoAudio = (function () {
     try { result = music.play(); } catch (_) { return; }
     if (result && typeof result.then === 'function') {
       playPending = result;
-      result.then(() => { if (playPending === result) playPending = null; }, () => { if (playPending === result) playPending = null; });
+      result.then(() => {
+        if (playPending === result) playPending = null;
+        // A play promise may settle after a newer request replaced it. Do not
+        // pause that newer, authorised playback. If a visibility change left
+        // the current element paused, reconcile the latest desired state now.
+        if (generation !== musicGeneration) {
+          // The operation which advanced the generation already paused the
+          // element. A stale promise must never issue another pause because a
+          // newer play request may now own the same audio element.
+          if (canPlayMusic()) syncMusic();
+          return;
+        }
+        if (!canPlayMusic()) {
+          try { music.pause(); } catch (_) {}
+        }
+      }, () => { if (playPending === result) playPending = null; });
     }
   }
   function scheduleMusic() {

@@ -39,6 +39,6 @@ async function renderElementToPng(element,{scale=1,background='#fff'}={}) {
   }});
   return await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Could not encode PNG')),'image/png'));
 }
-async function downloadElementPng(element,filename='partyquiz-results.png',options={}) {const blob=await renderElementToPng(element,options),doc=element.ownerDocument||document,url=URL.createObjectURL(blob),anchor=doc.createElement('a');anchor.href=url;anchor.download=filename;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),0);return blob;}
+async function downloadElementPng(element,filename='partyquiz-results.png',options={}) {const blob=await renderElementToPng(element,options),doc=element.ownerDocument||document,url=URL.createObjectURL(blob),anchor=doc.createElement('a');anchor.href=url;anchor.download=filename;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),30000);return blob;}
 const api={renderElementToPng,downloadElementPng};root.NeoResultsExport=api;if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window==='undefined'?globalThis:window);
