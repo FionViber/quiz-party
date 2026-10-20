@@ -116,9 +116,9 @@ window.NeoI18n = {
     "各自選好答案，再一起公布。"
   ],
   "togetherNote": [
-    "For multiple choice, everyone answers together and a wrong answer costs nothing. For buzz-in questions, one player answers first and a wrong answer loses half the question value.",
-    "选择题一起回答，答错不扣分。抢答题一人抢答，答错扣该题分值的一半。",
-    "選擇題一起回答，答錯不扣分。搶答題一人搶答，答錯扣該題分值的一半。"
+    "Multiple-choice questions are answered by everyone together with no penalty for a wrong answer. Short-answer questions are answered by one player first, and a wrong answer loses half the question value.",
+    "选择题一起回答，答错不扣分。简答题一人抢答，答错扣该题分值的一半。",
+    "選擇題一起回答，答錯不扣分。簡答題一人搶答，答錯扣該題分值的一半。"
   ],
   "buzzDesc": [
     "One player answers each question. A right answer adds points. A wrong answer loses half the question value.",
@@ -126,9 +126,9 @@ window.NeoI18n = {
     "每題由一人搶答，答對加分，答錯扣該題分值的一半。"
   ],
   "turnsDesc": [
-    "Take turns on every question, including buzz-in questions.",
-    "选择题和抢答题，都按玩家顺序轮流回答。",
-    "選擇題和搶答題，都按玩家順序輪流回答。"
+    "Take turns on every question, including short-answer questions.",
+    "选择题和简答题，都按玩家顺序轮流回答。",
+    "選擇題和簡答題，都按玩家順序輪流回答。"
   ],
   "play": [
     "Choose this mode",
@@ -176,19 +176,19 @@ window.NeoI18n = {
     "開始遊戲"
   ],
   "rulesTogether": [
-    "Multiple choice (100, 200, 300, 400 points): choose privately, then share your choices together. The operator reveals the answer and marks each player right or wrong. Right adds the question value. Wrong costs nothing. Buzz-in questions (200, 400, 600, 800 points): agree who signaled first, then select that player. After the answer, reveal the answer and judge it. Right adds the question value. Wrong costs half. Confirm the scores to continue.",
-    "选择题（100、200、300、400分）：各自选好答案，再同时公布。操作者显示答案并标记每位玩家的对错。答对加该题分值，答错不扣分。抢答题（200、400、600、800分）：现场确认谁先示意作答，再选择该玩家。玩家回答后显示答案并判定对错。答对加该题分值，答错扣一半。确认积分后继续。",
-    "選擇題（100、200、300、400分）：各自選好答案，再同時公布。操作者顯示答案並標記每位玩家的對錯。答對加該題分值，答錯不扣分。搶答題（200、400、600、800分）：現場確認誰先示意作答，再選擇該玩家。玩家回答後顯示答案並判定對錯。答對加該題分值，答錯扣一半。確認積分後繼續。"
+    "Multiple choice (100, 200, 300, 400 points): choose privately, then share your choices together. The operator reveals the answer and marks each player right or wrong. Right adds the question value. Wrong costs nothing. Short answer (200, 400, 600, 800 points): agree who signaled first, then select that player. After the answer, reveal the answer and judge it. Right adds the question value. Wrong costs half. Confirm the scores to continue.",
+    "选择题（100、200、300、400分）：各自选好答案，再同时公布。操作者显示答案并标记每位玩家的对错。答对加该题分值，答错不扣分。简答题（200、400、600、800分）：现场确认谁先示意作答，再选择该玩家。玩家回答后显示答案并判定对错。答对加该题分值，答错扣一半。确认积分后继续。",
+    "選擇題（100、200、300、400分）：各自選好答案，再同時公布。操作者顯示答案並標記每位玩家的對錯。答對加該題分值，答錯不扣分。簡答題（200、400、600、800分）：現場確認誰先示意作答，再選擇該玩家。玩家回答後顯示答案並判定對錯。答對加該題分值，答錯扣一半。確認積分後繼續。"
   ],
   "rulesBuzz": [
-    "For every question, agree who signaled first, then select that player. Multiple choice (100, 200, 300, 400 points) uses the player’s selected option. Buzz-in questions (200, 400, 600, 800 points) are answered aloud. Reveal the answer, check the result, then confirm the score. A right answer adds the question value. A wrong answer loses half the value.",
-    "每题先在现场确认谁先示意作答，再选择该玩家。选择题（100、200、300、400分）选中玩家的答案，抢答题（200、400、600、800分）由玩家回答。随后显示答案、核对结果并确认积分。答对加该题分值，答错扣该题分值的一半。",
-    "每題先在現場確認誰先示意作答，再選擇該玩家。選擇題（100、200、300、400分）選取玩家的答案，搶答題（200、400、600、800分）由玩家回答。隨後顯示答案、核對結果並確認積分。答對加該題分值，答錯扣該題分值的一半。"
+    "For every question, agree who signaled first, then select that player. Multiple choice (100, 200, 300, 400 points) uses the player’s selected option. Short answer (200, 400, 600, 800 points) is answered aloud. Reveal the answer, check the result, then confirm the score. A right answer adds the question value. A wrong answer loses half the value.",
+    "每题先在现场确认谁先示意作答，再选择该玩家。选择题（100、200、300、400分）选中玩家的答案，简答题（200、400、600、800分）由玩家回答。随后显示答案、核对结果并确认积分。答对加该题分值，答错扣该题分值的一半。",
+    "每題先在現場確認誰先示意作答，再選擇該玩家。選擇題（100、200、300、400分）選取玩家的答案，簡答題（200、400、600、800分）由玩家回答。隨後顯示答案、核對結果並確認積分。答對加該題分值，答錯扣該題分值的一半。"
   ],
   "rulesTurns": [
-    "Players take turns in the order listed on every question. Multiple choice (100, 200, 300, 400 points) uses the current player’s option and reveals the answer. The game checks it. Buzz-in questions (200, 400, 600, 800 points) are answered aloud, then revealed and marked right or wrong. A right answer adds the question value. A wrong answer costs nothing on multiple choice and half the value on buzz-in questions. Confirm the score, then continue to the next player.",
-    "所有题目都按玩家顺序轮流回答。选择题（100、200、300、400分）选中当前玩家的答案，显示答案后自动判定对错。抢答题（200、400、600、800分）由当前玩家回答，再显示答案并标记对错。答对加该题分值，选择题答错不扣分，抢答题答错扣一半。确认积分后进入下一题，轮到下一位玩家。",
-    "所有題目都依玩家順序輪流回答。選擇題（100、200、300、400分）選取目前玩家的答案，顯示答案後自動判定對錯。搶答題（200、400、600、800分）由目前玩家回答，再顯示答案並標記對錯。答對加該題分值，選擇題答錯不扣分，搶答題答錯扣一半。確認積分後進入下一題，輪到下一位玩家。"
+    "Players take turns in the order listed on every question. Multiple choice (100, 200, 300, 400 points) uses the current player’s option and reveals the answer. The game checks it. Short answer (200, 400, 600, 800 points) is answered aloud, then revealed and marked right or wrong. A right answer adds the question value. A wrong answer costs nothing on multiple choice and half the value on short-answer questions. Confirm the score, then continue to the next player.",
+    "所有题目都按玩家顺序轮流回答。选择题（100、200、300、400分）选中当前玩家的答案，显示答案后自动判定对错。简答题（200、400、600、800分）由当前玩家回答，再显示答案并标记对错。答对加该题分值，选择题答错不扣分，简答题答错扣一半。确认积分后进入下一题，轮到下一位玩家。",
+    "所有題目都依玩家順序輪流回答。選擇題（100、200、300、400分）選取目前玩家的答案，顯示答案後自動判定對錯。簡答題（200、400、600、800分）由目前玩家回答，再顯示答案並標記對錯。答對加該題分值，選擇題答錯不扣分，簡答題答錯扣一半。確認積分後進入下一題，輪到下一位玩家。"
   ],
   "boardTitle": [
     "Which one this time?",
@@ -201,9 +201,24 @@ window.NeoI18n = {
     "選擇題"
   ],
   "open": [
-    "Buzz-in question",
-    "抢答题",
-    "搶答題"
+    "Short answer",
+    "简答题",
+    "簡答題"
+  ],
+  "participationAll": [
+    "All",
+    "全体",
+    "全體"
+  ],
+  "participationBuzz": [
+    "Buzz-in",
+    "抢答",
+    "搶答"
+  ],
+  "participationTurns": [
+    "Turns",
+    "轮流",
+    "輪流"
   ],
   "completed": [
     "Questions scored: {n}",
@@ -611,9 +626,9 @@ window.NeoI18n = {
     "請將 correctOptionId 設為 options 中的一個 ID。"
   ],
   "errorOpenOptions": [
-    "For buzz-in-only questions, remove options and correctOptionId.",
-    "仅含抢答题的题目须移除 options 和 correctOptionId。",
-    "僅含搶答題的題目須移除 options 和 correctOptionId。"
+    "For short-answer-only questions, remove options and correctOptionId.",
+    "仅含简答题的题目须移除 options 和 correctOptionId。",
+    "僅含簡答題的題目須移除 options 和 correctOptionId。"
   ],
   "errorExplanation": [
     "Provide explanation in all three languages, or leave it out of all three.",
@@ -691,9 +706,9 @@ window.NeoI18n = {
     "請將 formats 設為 [\"choice\"]、[\"open\"] 或 [\"choice\", \"open\"]。"
   ],
   "errorLegacyPair": [
-    "Old-format questions sharing a baseId must use the same categoryId and matching difficulty. Keep at most one choice entry and one open entry; the open entry must be worth 400 points more.",
-    "旧格式题目共用 baseId 时，categoryId 和基础难度须一致。选择题与抢答题各最多一条，抢答题须比选择题高 400 分。",
-    "舊格式題目共用 baseId 時，categoryId 和基礎難度須一致。選擇題與搶答題各最多一筆，搶答題須比選擇題高 400 分。"
+    "Old-format questions sharing a baseId must use the same categoryId and matching difficulty. Keep at most one choice entry and one short-answer entry; the short-answer entry must be worth 400 points more.",
+    "旧格式题目共用 baseId 时，categoryId 和基础难度须一致。选择题与简答题各最多一条，简答题须比选择题高 400 分。",
+    "舊格式題目共用 baseId 時，categoryId 和基礎難度須一致。選擇題與簡答題各最多一筆，簡答題須比選擇題高 400 分。"
   ],
   "skip": [
     "Skip to content",
@@ -931,9 +946,9 @@ window.NeoI18n = {
     "選擇題"
   ],
   "tileOpen": [
-    "Buzz-in",
-    "抢答题",
-    "搶答題"
+    "Short answer",
+    "简答题",
+    "簡答題"
   ],
   "turnChoiceNext": [
     "Choose an option using its number key or a click, then select “Reveal answer”.",
@@ -1006,9 +1021,9 @@ window.NeoI18n = {
     "答對題數"
   ],
   "statsBarDesc": [
-    "Multiple choice and buzz-in questions",
-    "选择题与抢答题分别统计",
-    "選擇題與搶答題分別統計"
+    "Multiple choice and short-answer questions",
+    "选择题与简答题分别统计",
+    "選擇題與簡答題分別統計"
   ],
   "statsAnswered": [
     "Questions scored: {n}",

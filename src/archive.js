@@ -1,7 +1,7 @@
 /* Portable and versioned saves. No filesystem permissions or server APIs. */
 (function (root) {
 'use strict';
-const SAVE_VERSION=2, READER_VERSION=6, APP_VERSION='5.8.0';
+const SAVE_VERSION=2, READER_VERSION=6, APP_VERSION='5.9.0';
 const ResultsHistory=(typeof module!=='undefined'&&module.exports)?require('./results-history.js'):root.NeoResultsHistory;
 const PlayerNames=(typeof module!=='undefined'&&module.exports)?require('./player-names.js'):root.NeoPlayerNames;
 const Clock=(typeof module!=='undefined'&&module.exports)?require('./game-clock.js'):root.NeoGameClock;

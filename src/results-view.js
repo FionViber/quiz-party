@@ -35,7 +35,7 @@ function barChart(stat,e=escape,labels={}){
     const glyphs=parts(p.name),limit=Math.max(4,Math.floor(gap/20)),names=[];
     for(let at=0;at<glyphs.length;at+=limit)names.push(glyphs.slice(at,at+limit).join(''));
     const nameText=names.slice(0,3).map((name,n)=>'<text x="'+(x+bw/2)+'" y="'+(H-55+n*20)+'" text-anchor="middle" class="chart-player-name">'+e(name)+'</text>').join('');
-    return '<g><title>'+e(p.name)+': '+total+'</title>'+(p.choice?'<rect x="'+x+'" y="'+y(p.choice)+'" width="'+bw+'" height="'+hChoice+'" fill="#2196f3" stroke="black" stroke-width="2"/>':'')+(p.open?'<rect x="'+x+'" y="'+y(total)+'" width="'+bw+'" height="'+hOpen+'" fill="#ff5d91" stroke="black" stroke-width="2"/>':'')+'<text x="'+(x+bw/2)+'" y="'+Math.max(23,y(total)-10)+'" text-anchor="middle" class="bar-total">'+total+'</text>'+nameText+'</g>';
+    return '<g><title>'+e(p.name)+': '+total+'</title>'+(p.choice?'<rect x="'+x+'" y="'+y(p.choice)+'" width="'+bw+'" height="'+hChoice+'" class="chart-choice-segment" stroke="black" stroke-width="2"/>':'')+(p.open?'<rect x="'+x+'" y="'+y(total)+'" width="'+bw+'" height="'+hOpen+'" class="chart-open-segment" stroke="black" stroke-width="2"/>':'')+'<text x="'+(x+bw/2)+'" y="'+Math.max(23,y(total)-10)+'" text-anchor="middle" class="bar-total">'+total+'</text>'+nameText+'</g>';
   }).join('');
   return '<svg class="results-graphic results-bar-chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+e(labels.bar||'Correct answers')+'">'+grid+bars+'</svg>';
 }

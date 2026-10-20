@@ -217,6 +217,14 @@
     <div class="home-actions"><div class="row">${B('import-save',t('importSave'),'small','','upload')}${B('export-save',t('exportSave'),'small',g?'':'disabled','download')}${B('results-history',t('resultsHistoryCount',{n:state.resultsHistory.length}),'small','','trophy')}</div>${g&&!g.finished?`<div class="resume-inline"><span>${e(t(g.mode))} · ${e(t('completed',{n:activeHistory(g).length}))}</span>${B('resume',t('resume'),'primary small','','arrow')}</div>`:g?.finished?`<div class="resume-inline">${B('resume',t('viewResults'),'small','','trophy')}</div>`:''}</div>`;
   }
   function packTitle(pack) { return builtins.some(p=>p.id===pack.id)?t('builtin'):(pack.title?.[state.lang]||pack.id); }
+  function participationKey(mode,q) {
+    if(mode==='turns')return 'participationTurns';
+    return C.isCollective(mode,q)?'participationAll':'participationBuzz';
+  }
+  function questionBadges(q,mode,compact=false) {
+    const type=compact?(q.type==='choice'?'tileChoice':'tileOpen'):q.type;
+    return `<span class="${compact?'board-tile-tags':'question-tags'}"><span class="${compact?'board-tile-type':'tag black'}" data-label="question-type">${e(t(type))}</span><span class="${compact?'board-tile-participation':'tag'}" data-label="participation">${e(t(participationKey(mode,q)))}</span></span>`;
+  }
   function tierPoints(pack,level){return level<=4?level*100:pack.schemaVersion===3?(level-4)*200:level*100;}
   function packPickerButton(context) {
     const all=context==='library'&&state.library.filter==='hidden'&&state.library.scope==='all';
@@ -288,8 +296,8 @@
     const selected=window.NeoBoardNavigation.select(boardSlots(),state.boardCursor,state.boardPage);
     state.boardCursor=selected<0?null:visible[selected].qid;
     const cards=visible.slice(begin,begin+BOARD_PAGE_SIZE).map(b=>{
-      const base=qmap.get(b.qid),variant=C.variant(base,b.level),points=variant.points,spoken=variant.type==='open',used=seen.has(b.qid),label=questionTag(base,g.pack);
-      return `<button type="button" class="board-question-tile ${spoken?'open-tile':''} ${used?'taken':''}" data-action="pick" data-qid="${e(b.qid)}" data-level="${b.level}" data-points="${points}" data-type="${variant.type}" data-number="${b.number}" ${used?'disabled':''} aria-label="${e(t('questionNumber',{n:b.number})+' · '+t('selectQ',{p:points})+' · '+label)}"><span class="board-tile-row"><strong>${points} <small>${e(t('points'))}</small></strong><span class="board-tile-type">${e(t(spoken?'tileOpen':'tileChoice'))}</span></span><span class="board-tile-tag" title="${e(label)}">${e(label)}</span><span class="board-tile-meta"><span class="board-tile-number">#${String(b.number).padStart(2,'0')}</span>${used?`<span class="board-tile-chosen">${e(t('pickedQuestion'))}</span>`:''}</span></button>`;
+      const base=qmap.get(b.qid),variant=C.variant(base,b.level),points=variant.points,used=seen.has(b.qid),label=questionTag(base,g.pack);
+      return `<button type="button" class="board-question-tile ${used?'taken':''}" data-action="pick" data-qid="${e(b.qid)}" data-level="${b.level}" data-points="${points}" data-type="${variant.type}" data-number="${b.number}" ${used?'disabled':''} aria-label="${e(t('questionNumber',{n:b.number})+' · '+t('selectQ',{p:points})+' · '+t(variant.type)+' · '+t(participationKey(g.mode,variant))+' · '+label)}"><span class="board-tile-row"><strong>${points} <small>${e(t('points'))}</small></strong>${questionBadges(variant,g.mode,true)}</span><span class="board-tile-tag" title="${e(label)}">${e(label)}</span><span class="board-tile-meta"><span class="board-tile-number">#${String(b.number).padStart(2,'0')}</span>${used?`<span class="board-tile-chosen">${e(t('pickedQuestion'))}</span>`:''}</span></button>`;
     }).join('');
     const pager=pages>1?`<nav class="board-pagination" aria-label="${e(t('boardTitle'))}">${B('board-prev',t('prev'),'small',state.boardPage===0?'disabled':'','back')}<span class="board-page-count" aria-live="polite">${state.boardPage+1} / ${pages}</span>${B('board-next',t('nextPage'),'small',state.boardPage===pages-1?'disabled':'','arrow')}</nav>`:'';
     return `<div class="page-top"><div><h1>${e(t('boardTitle'))}</h1></div><div class="row"><span class="tag yellow">${e(t(g.mode))}</span>${B('finish',t('finish'),'small','','flag')}</div></div>${scoresStrip()}
@@ -427,9 +435,9 @@
       race&&q.type==='open'?(cur.answerer===null?t('raceOpenFirst'):t('raceOpenReady',{n:g.players[cur.answerer]})):
       q.type==='open'?t('turnOpenReady',{n:g.players[cur.answerer]}):
       (cur.selected?t('turnChoiceReady',{option:String.fromCharCode(65+q.options.indexOf(cur.selected))}):t('turnChoiceNext')));
-    return `<div class="question-top"><div class="row">${B('question-back',t('back'),'small','','back')}<span class="tag ${race?'pink':'yellow'}">${e(t(g.mode))}</span></div>${tools(q,g.pack.id)}</div>
+    return `<div class="question-top"><div class="row">${B('question-back',t('back'),'small','','back')}<span class="tag question-type-marker" data-question-type="${q.type}">${e(t(g.mode))}</span></div>${tools(q,g.pack.id)}</div>
       ${scoresStrip()}<div style="--prompt-height:${q.type==='choice'&&q.options.length>4?228:280}px" class="question-content ${reveal?'revealed':'answering'} ${q.type==='open'?'is-open':''} ${race?'is-race':''}">
-      <section class="question-panel"><div class="question-band"><div class="row"><strong>${e(questionTag(g.pack.questions.find(x=>x.id===q.id),g.pack))}</strong><span class="tag black">${e(t(q.type))}</span></div><span class="question-value">${q.points}<small>${e(t('points'))}</small></span></div>${triplePrompt(q)}</section>
+      <section class="question-panel" data-question-type="${q.type}"><div class="question-band"><div class="row"><strong>${e(questionTag(g.pack.questions.find(x=>x.id===q.id),g.pack))}</strong>${questionBadges(q,g.mode)}</div><span class="question-value">${q.points}<small>${e(t('points'))}</small></span></div>${triplePrompt(q)}</section>
       ${!reveal?`<div class="question-instruction">${icon(race?'bolt':all?'users':'card')}<span>${e(instruction)}</span>${!all&&!race?`<strong>${e(t('answerer',{name:g.players[cur.answerer]}))}</strong>`:''}</div>`:''}
       ${!reveal&&race?`<section class="answerer-panel"><strong>${e(t('whoBuzzed'))}</strong><div class="answerer-buttons">${g.players.map((n,i)=>B('answerer',n,'small',`data-player="${i}" data-key-preferred="${'Key'+'ASDFGHJK'[i]}" aria-pressed="${cur.answerer===i}"`)).join('')}</div></section>`:''}
       ${!reveal?optionsView(q,cur,selectable,false):''}
@@ -558,7 +566,7 @@
       if(!source){closeModal(true);return;}
       const level=C.levels(source).includes(m.level)?m.level:C.levels(source)[0],q=C.variant(source,level);
       wide=true;title=`${q.points} ${t('points')} · ${t(q.type)}`;
-      body=`<div class="inspect-formats">${C.levels(source).map(n=>B('inspect-format',`${t(n>4?'open':'choice')} · ${C.variant(source,n).points}`,n===level?'small primary':'small',`data-level="${n}" aria-pressed="${n===level}"`)).join('')}</div><section class="question-panel">${triplePrompt(q)}</section>${optionsView(q,null,false,true)}${q.type==='open'?tripleAnswer(q):''}`;
+      body=`<div class="inspect-formats">${C.levels(source).map(n=>B('inspect-format',`${t(n>4?'open':'choice')} · ${C.variant(source,n).points}`,n===level?'small primary':'small',`data-level="${n}" data-question-type="${n>4?'open':'choice'}" aria-pressed="${n===level}"`)).join('')}</div><section class="question-panel">${triplePrompt(q)}</section>${optionsView(q,null,false,true)}${q.type==='open'?tripleAnswer(q):''}`;
       actions=googleLink(q)+(isHidden(m.packId,m.qid)?B('restore',t('restore'),'primary small',`data-pack="${e(m.packId)}" data-qid="${e(m.qid)}"`,'refresh'):B('hide',t('remove'),'small',`data-pack="${e(m.packId)}" data-qid="${e(m.qid)}"`,'eye'));
     }
     if(m.type==='confirm') {
