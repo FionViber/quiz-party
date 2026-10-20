@@ -447,9 +447,9 @@ window.NeoI18n = {
     "各自選好答案，再一起公布。"
   ],
   "togetherNote": [
-    "For multiple choice, everyone answers together and a wrong answer costs nothing. For buzz-in questions, one player answers first and a wrong answer loses half the question value.",
-    "选择题一起回答，答错不扣分。抢答题一人抢答，答错扣该题分值的一半。",
-    "選擇題一起回答，答錯不扣分。搶答題一人搶答，答錯扣該題分值的一半。"
+    "Multiple-choice questions are answered by everyone together with no penalty for a wrong answer. Short-answer questions are answered by one player first, and a wrong answer loses half the question value.",
+    "选择题一起回答，答错不扣分。简答题一人抢答，答错扣该题分值的一半。",
+    "選擇題一起回答，答錯不扣分。簡答題一人搶答，答錯扣該題分值的一半。"
   ],
   "buzzDesc": [
     "One player answers each question. A right answer adds points. A wrong answer loses half the question value.",
@@ -457,9 +457,9 @@ window.NeoI18n = {
     "每題由一人搶答，答對加分，答錯扣該題分值的一半。"
   ],
   "turnsDesc": [
-    "Take turns on every question, including buzz-in questions.",
-    "选择题和抢答题，都按玩家顺序轮流回答。",
-    "選擇題和搶答題，都按玩家順序輪流回答。"
+    "Take turns on every question, including short-answer questions.",
+    "选择题和简答题，都按玩家顺序轮流回答。",
+    "選擇題和簡答題，都按玩家順序輪流回答。"
   ],
   "play": [
     "Choose this mode",
@@ -507,19 +507,19 @@ window.NeoI18n = {
     "開始遊戲"
   ],
   "rulesTogether": [
-    "Multiple choice (100, 200, 300, 400 points): choose privately, then share your choices together. The operator reveals the answer and marks each player right or wrong. Right adds the question value. Wrong costs nothing. Buzz-in questions (200, 400, 600, 800 points): agree who signaled first, then select that player. After the answer, reveal the answer and judge it. Right adds the question value. Wrong costs half. Confirm the scores to continue.",
-    "选择题（100、200、300、400分）：各自选好答案，再同时公布。操作者显示答案并标记每位玩家的对错。答对加该题分值，答错不扣分。抢答题（200、400、600、800分）：现场确认谁先示意作答，再选择该玩家。玩家回答后显示答案并判定对错。答对加该题分值，答错扣一半。确认积分后继续。",
-    "選擇題（100、200、300、400分）：各自選好答案，再同時公布。操作者顯示答案並標記每位玩家的對錯。答對加該題分值，答錯不扣分。搶答題（200、400、600、800分）：現場確認誰先示意作答，再選擇該玩家。玩家回答後顯示答案並判定對錯。答對加該題分值，答錯扣一半。確認積分後繼續。"
+    "Multiple choice (100, 200, 300, 400 points): choose privately, then share your choices together. The operator reveals the answer and marks each player right or wrong. Right adds the question value. Wrong costs nothing. Short answer (200, 400, 600, 800 points): agree who signaled first, then select that player. After the answer, reveal the answer and judge it. Right adds the question value. Wrong costs half. Confirm the scores to continue.",
+    "选择题（100、200、300、400分）：各自选好答案，再同时公布。操作者显示答案并标记每位玩家的对错。答对加该题分值，答错不扣分。简答题（200、400、600、800分）：现场确认谁先示意作答，再选择该玩家。玩家回答后显示答案并判定对错。答对加该题分值，答错扣一半。确认积分后继续。",
+    "選擇題（100、200、300、400分）：各自選好答案，再同時公布。操作者顯示答案並標記每位玩家的對錯。答對加該題分值，答錯不扣分。簡答題（200、400、600、800分）：現場確認誰先示意作答，再選擇該玩家。玩家回答後顯示答案並判定對錯。答對加該題分值，答錯扣一半。確認積分後繼續。"
   ],
   "rulesBuzz": [
-    "For every question, agree who signaled first, then select that player. Multiple choice (100, 200, 300, 400 points) uses the player’s selected option. Buzz-in questions (200, 400, 600, 800 points) are answered aloud. Reveal the answer, check the result, then confirm the score. A right answer adds the question value. A wrong answer loses half the value.",
-    "每题先在现场确认谁先示意作答，再选择该玩家。选择题（100、200、300、400分）选中玩家的答案，抢答题（200、400、600、800分）由玩家回答。随后显示答案、核对结果并确认积分。答对加该题分值，答错扣该题分值的一半。",
-    "每題先在現場確認誰先示意作答，再選擇該玩家。選擇題（100、200、300、400分）選取玩家的答案，搶答題（200、400、600、800分）由玩家回答。隨後顯示答案、核對結果並確認積分。答對加該題分值，答錯扣該題分值的一半。"
+    "For every question, agree who signaled first, then select that player. Multiple choice (100, 200, 300, 400 points) uses the player’s selected option. Short answer (200, 400, 600, 800 points) is answered aloud. Reveal the answer, check the result, then confirm the score. A right answer adds the question value. A wrong answer loses half the value.",
+    "每题先在现场确认谁先示意作答，再选择该玩家。选择题（100、200、300、400分）选中玩家的答案，简答题（200、400、600、800分）由玩家回答。随后显示答案、核对结果并确认积分。答对加该题分值，答错扣该题分值的一半。",
+    "每題先在現場確認誰先示意作答，再選擇該玩家。選擇題（100、200、300、400分）選取玩家的答案，簡答題（200、400、600、800分）由玩家回答。隨後顯示答案、核對結果並確認積分。答對加該題分值，答錯扣該題分值的一半。"
   ],
   "rulesTurns": [
-    "Players take turns in the order listed on every question. Multiple choice (100, 200, 300, 400 points) uses the current player’s option and reveals the answer. The game checks it. Buzz-in questions (200, 400, 600, 800 points) are answered aloud, then revealed and marked right or wrong. A right answer adds the question value. A wrong answer costs nothing on multiple choice and half the value on buzz-in questions. Confirm the score, then continue to the next player.",
-    "所有题目都按玩家顺序轮流回答。选择题（100、200、300、400分）选中当前玩家的答案，显示答案后自动判定对错。抢答题（200、400、600、800分）由当前玩家回答，再显示答案并标记对错。答对加该题分值，选择题答错不扣分，抢答题答错扣一半。确认积分后进入下一题，轮到下一位玩家。",
-    "所有題目都依玩家順序輪流回答。選擇題（100、200、300、400分）選取目前玩家的答案，顯示答案後自動判定對錯。搶答題（200、400、600、800分）由目前玩家回答，再顯示答案並標記對錯。答對加該題分值，選擇題答錯不扣分，搶答題答錯扣一半。確認積分後進入下一題，輪到下一位玩家。"
+    "Players take turns in the order listed on every question. Multiple choice (100, 200, 300, 400 points) uses the current player’s option and reveals the answer. The game checks it. Short answer (200, 400, 600, 800 points) is answered aloud, then revealed and marked right or wrong. A right answer adds the question value. A wrong answer costs nothing on multiple choice and half the value on short-answer questions. Confirm the score, then continue to the next player.",
+    "所有题目都按玩家顺序轮流回答。选择题（100、200、300、400分）选中当前玩家的答案，显示答案后自动判定对错。简答题（200、400、600、800分）由当前玩家回答，再显示答案并标记对错。答对加该题分值，选择题答错不扣分，简答题答错扣一半。确认积分后进入下一题，轮到下一位玩家。",
+    "所有題目都依玩家順序輪流回答。選擇題（100、200、300、400分）選取目前玩家的答案，顯示答案後自動判定對錯。簡答題（200、400、600、800分）由目前玩家回答，再顯示答案並標記對錯。答對加該題分值，選擇題答錯不扣分，簡答題答錯扣一半。確認積分後進入下一題，輪到下一位玩家。"
   ],
   "boardTitle": [
     "Which one this time?",
@@ -532,9 +532,24 @@ window.NeoI18n = {
     "選擇題"
   ],
   "open": [
-    "Buzz-in question",
-    "抢答题",
-    "搶答題"
+    "Short answer",
+    "简答题",
+    "簡答題"
+  ],
+  "participationAll": [
+    "All",
+    "全体",
+    "全體"
+  ],
+  "participationBuzz": [
+    "Buzz-in",
+    "抢答",
+    "搶答"
+  ],
+  "participationTurns": [
+    "Turns",
+    "轮流",
+    "輪流"
   ],
   "completed": [
     "Questions scored: {n}",
@@ -942,9 +957,9 @@ window.NeoI18n = {
     "請將 correctOptionId 設為 options 中的一個 ID。"
   ],
   "errorOpenOptions": [
-    "For buzz-in-only questions, remove options and correctOptionId.",
-    "仅含抢答题的题目须移除 options 和 correctOptionId。",
-    "僅含搶答題的題目須移除 options 和 correctOptionId。"
+    "For short-answer-only questions, remove options and correctOptionId.",
+    "仅含简答题的题目须移除 options 和 correctOptionId。",
+    "僅含簡答題的題目須移除 options 和 correctOptionId。"
   ],
   "errorExplanation": [
     "Provide explanation in all three languages, or leave it out of all three.",
@@ -1022,9 +1037,9 @@ window.NeoI18n = {
     "請將 formats 設為 [\"choice\"]、[\"open\"] 或 [\"choice\", \"open\"]。"
   ],
   "errorLegacyPair": [
-    "Old-format questions sharing a baseId must use the same categoryId and matching difficulty. Keep at most one choice entry and one open entry; the open entry must be worth 400 points more.",
-    "旧格式题目共用 baseId 时，categoryId 和基础难度须一致。选择题与抢答题各最多一条，抢答题须比选择题高 400 分。",
-    "舊格式題目共用 baseId 時，categoryId 和基礎難度須一致。選擇題與搶答題各最多一筆，搶答題須比選擇題高 400 分。"
+    "Old-format questions sharing a baseId must use the same categoryId and matching difficulty. Keep at most one choice entry and one short-answer entry; the short-answer entry must be worth 400 points more.",
+    "旧格式题目共用 baseId 时，categoryId 和基础难度须一致。选择题与简答题各最多一条，简答题须比选择题高 400 分。",
+    "舊格式題目共用 baseId 時，categoryId 和基礎難度須一致。選擇題與簡答題各最多一筆，簡答題須比選擇題高 400 分。"
   ],
   "skip": [
     "Skip to content",
@@ -1262,9 +1277,9 @@ window.NeoI18n = {
     "選擇題"
   ],
   "tileOpen": [
-    "Buzz-in",
-    "抢答题",
-    "搶答題"
+    "Short answer",
+    "简答题",
+    "簡答題"
   ],
   "turnChoiceNext": [
     "Choose an option using its number key or a click, then select “Reveal answer”.",
@@ -1337,9 +1352,9 @@ window.NeoI18n = {
     "答對題數"
   ],
   "statsBarDesc": [
-    "Multiple choice and buzz-in questions",
-    "选择题与抢答题分别统计",
-    "選擇題與搶答題分別統計"
+    "Multiple choice and short-answer questions",
+    "选择题与简答题分别统计",
+    "選擇題與簡答題分別統計"
   ],
   "statsAnswered": [
     "Questions scored: {n}",
@@ -2003,7 +2018,7 @@ if(typeof module!=='undefined'&&module.exports)module.exports=api;
 /* Portable and versioned saves. No filesystem permissions or server APIs. */
 (function (root) {
 'use strict';
-const SAVE_VERSION=2, READER_VERSION=6, APP_VERSION='5.8.0';
+const SAVE_VERSION=2, READER_VERSION=6, APP_VERSION='5.9.0';
 const ResultsHistory=(typeof module!=='undefined'&&module.exports)?require('./results-history.js'):root.NeoResultsHistory;
 const PlayerNames=(typeof module!=='undefined'&&module.exports)?require('./player-names.js'):root.NeoPlayerNames;
 const Clock=(typeof module!=='undefined'&&module.exports)?require('./game-clock.js'):root.NeoGameClock;
@@ -3016,7 +3031,7 @@ function barChart(stat,e=escape,labels={}){
     const glyphs=parts(p.name),limit=Math.max(4,Math.floor(gap/20)),names=[];
     for(let at=0;at<glyphs.length;at+=limit)names.push(glyphs.slice(at,at+limit).join(''));
     const nameText=names.slice(0,3).map((name,n)=>'<text x="'+(x+bw/2)+'" y="'+(H-55+n*20)+'" text-anchor="middle" class="chart-player-name">'+e(name)+'</text>').join('');
-    return '<g><title>'+e(p.name)+': '+total+'</title>'+(p.choice?'<rect x="'+x+'" y="'+y(p.choice)+'" width="'+bw+'" height="'+hChoice+'" fill="#2196f3" stroke="black" stroke-width="2"/>':'')+(p.open?'<rect x="'+x+'" y="'+y(total)+'" width="'+bw+'" height="'+hOpen+'" fill="#ff5d91" stroke="black" stroke-width="2"/>':'')+'<text x="'+(x+bw/2)+'" y="'+Math.max(23,y(total)-10)+'" text-anchor="middle" class="bar-total">'+total+'</text>'+nameText+'</g>';
+    return '<g><title>'+e(p.name)+': '+total+'</title>'+(p.choice?'<rect x="'+x+'" y="'+y(p.choice)+'" width="'+bw+'" height="'+hChoice+'" class="chart-choice-segment" stroke="black" stroke-width="2"/>':'')+(p.open?'<rect x="'+x+'" y="'+y(total)+'" width="'+bw+'" height="'+hOpen+'" class="chart-open-segment" stroke="black" stroke-width="2"/>':'')+'<text x="'+(x+bw/2)+'" y="'+Math.max(23,y(total)-10)+'" text-anchor="middle" class="bar-total">'+total+'</text>'+nameText+'</g>';
   }).join('');
   return '<svg class="results-graphic results-bar-chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+e(labels.bar||'Correct answers')+'">'+grid+bars+'</svg>';
 }
@@ -3252,6 +3267,14 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
     <div class="home-actions"><div class="row">${B('import-save',t('importSave'),'small','','upload')}${B('export-save',t('exportSave'),'small',g?'':'disabled','download')}${B('results-history',t('resultsHistoryCount',{n:state.resultsHistory.length}),'small','','trophy')}</div>${g&&!g.finished?`<div class="resume-inline"><span>${e(t(g.mode))} · ${e(t('completed',{n:activeHistory(g).length}))}</span>${B('resume',t('resume'),'primary small','','arrow')}</div>`:g?.finished?`<div class="resume-inline">${B('resume',t('viewResults'),'small','','trophy')}</div>`:''}</div>`;
   }
   function packTitle(pack) { return builtins.some(p=>p.id===pack.id)?t('builtin'):(pack.title?.[state.lang]||pack.id); }
+  function participationKey(mode,q) {
+    if(mode==='turns')return 'participationTurns';
+    return C.isCollective(mode,q)?'participationAll':'participationBuzz';
+  }
+  function questionBadges(q,mode,compact=false) {
+    const type=compact?(q.type==='choice'?'tileChoice':'tileOpen'):q.type;
+    return `<span class="${compact?'board-tile-tags':'question-tags'}"><span class="${compact?'board-tile-type':'tag black'}" data-label="question-type">${e(t(type))}</span><span class="${compact?'board-tile-participation':'tag'}" data-label="participation">${e(t(participationKey(mode,q)))}</span></span>`;
+  }
   function tierPoints(pack,level){return level<=4?level*100:pack.schemaVersion===3?(level-4)*200:level*100;}
   function packPickerButton(context) {
     const all=context==='library'&&state.library.filter==='hidden'&&state.library.scope==='all';
@@ -3323,8 +3346,8 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
     const selected=window.NeoBoardNavigation.select(boardSlots(),state.boardCursor,state.boardPage);
     state.boardCursor=selected<0?null:visible[selected].qid;
     const cards=visible.slice(begin,begin+BOARD_PAGE_SIZE).map(b=>{
-      const base=qmap.get(b.qid),variant=C.variant(base,b.level),points=variant.points,spoken=variant.type==='open',used=seen.has(b.qid),label=questionTag(base,g.pack);
-      return `<button type="button" class="board-question-tile ${spoken?'open-tile':''} ${used?'taken':''}" data-action="pick" data-qid="${e(b.qid)}" data-level="${b.level}" data-points="${points}" data-type="${variant.type}" data-number="${b.number}" ${used?'disabled':''} aria-label="${e(t('questionNumber',{n:b.number})+' · '+t('selectQ',{p:points})+' · '+label)}"><span class="board-tile-row"><strong>${points} <small>${e(t('points'))}</small></strong><span class="board-tile-type">${e(t(spoken?'tileOpen':'tileChoice'))}</span></span><span class="board-tile-tag" title="${e(label)}">${e(label)}</span><span class="board-tile-meta"><span class="board-tile-number">#${String(b.number).padStart(2,'0')}</span>${used?`<span class="board-tile-chosen">${e(t('pickedQuestion'))}</span>`:''}</span></button>`;
+      const base=qmap.get(b.qid),variant=C.variant(base,b.level),points=variant.points,used=seen.has(b.qid),label=questionTag(base,g.pack);
+      return `<button type="button" class="board-question-tile ${used?'taken':''}" data-action="pick" data-qid="${e(b.qid)}" data-level="${b.level}" data-points="${points}" data-type="${variant.type}" data-number="${b.number}" ${used?'disabled':''} aria-label="${e(t('questionNumber',{n:b.number})+' · '+t('selectQ',{p:points})+' · '+t(variant.type)+' · '+t(participationKey(g.mode,variant))+' · '+label)}"><span class="board-tile-row"><strong>${points} <small>${e(t('points'))}</small></strong>${questionBadges(variant,g.mode,true)}</span><span class="board-tile-tag" title="${e(label)}">${e(label)}</span><span class="board-tile-meta"><span class="board-tile-number">#${String(b.number).padStart(2,'0')}</span>${used?`<span class="board-tile-chosen">${e(t('pickedQuestion'))}</span>`:''}</span></button>`;
     }).join('');
     const pager=pages>1?`<nav class="board-pagination" aria-label="${e(t('boardTitle'))}">${B('board-prev',t('prev'),'small',state.boardPage===0?'disabled':'','back')}<span class="board-page-count" aria-live="polite">${state.boardPage+1} / ${pages}</span>${B('board-next',t('nextPage'),'small',state.boardPage===pages-1?'disabled':'','arrow')}</nav>`:'';
     return `<div class="page-top"><div><h1>${e(t('boardTitle'))}</h1></div><div class="row"><span class="tag yellow">${e(t(g.mode))}</span>${B('finish',t('finish'),'small','','flag')}</div></div>${scoresStrip()}
@@ -3462,9 +3485,9 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
       race&&q.type==='open'?(cur.answerer===null?t('raceOpenFirst'):t('raceOpenReady',{n:g.players[cur.answerer]})):
       q.type==='open'?t('turnOpenReady',{n:g.players[cur.answerer]}):
       (cur.selected?t('turnChoiceReady',{option:String.fromCharCode(65+q.options.indexOf(cur.selected))}):t('turnChoiceNext')));
-    return `<div class="question-top"><div class="row">${B('question-back',t('back'),'small','','back')}<span class="tag ${race?'pink':'yellow'}">${e(t(g.mode))}</span></div>${tools(q,g.pack.id)}</div>
+    return `<div class="question-top"><div class="row">${B('question-back',t('back'),'small','','back')}<span class="tag question-type-marker" data-question-type="${q.type}">${e(t(g.mode))}</span></div>${tools(q,g.pack.id)}</div>
       ${scoresStrip()}<div style="--prompt-height:${q.type==='choice'&&q.options.length>4?228:280}px" class="question-content ${reveal?'revealed':'answering'} ${q.type==='open'?'is-open':''} ${race?'is-race':''}">
-      <section class="question-panel"><div class="question-band"><div class="row"><strong>${e(questionTag(g.pack.questions.find(x=>x.id===q.id),g.pack))}</strong><span class="tag black">${e(t(q.type))}</span></div><span class="question-value">${q.points}<small>${e(t('points'))}</small></span></div>${triplePrompt(q)}</section>
+      <section class="question-panel" data-question-type="${q.type}"><div class="question-band"><div class="row"><strong>${e(questionTag(g.pack.questions.find(x=>x.id===q.id),g.pack))}</strong>${questionBadges(q,g.mode)}</div><span class="question-value">${q.points}<small>${e(t('points'))}</small></span></div>${triplePrompt(q)}</section>
       ${!reveal?`<div class="question-instruction">${icon(race?'bolt':all?'users':'card')}<span>${e(instruction)}</span>${!all&&!race?`<strong>${e(t('answerer',{name:g.players[cur.answerer]}))}</strong>`:''}</div>`:''}
       ${!reveal&&race?`<section class="answerer-panel"><strong>${e(t('whoBuzzed'))}</strong><div class="answerer-buttons">${g.players.map((n,i)=>B('answerer',n,'small',`data-player="${i}" data-key-preferred="${'Key'+'ASDFGHJK'[i]}" aria-pressed="${cur.answerer===i}"`)).join('')}</div></section>`:''}
       ${!reveal?optionsView(q,cur,selectable,false):''}
@@ -3593,7 +3616,7 @@ const api={render,lineChart,barChart,durationText,axis,colors:COLORS};root.NeoRe
       if(!source){closeModal(true);return;}
       const level=C.levels(source).includes(m.level)?m.level:C.levels(source)[0],q=C.variant(source,level);
       wide=true;title=`${q.points} ${t('points')} · ${t(q.type)}`;
-      body=`<div class="inspect-formats">${C.levels(source).map(n=>B('inspect-format',`${t(n>4?'open':'choice')} · ${C.variant(source,n).points}`,n===level?'small primary':'small',`data-level="${n}" aria-pressed="${n===level}"`)).join('')}</div><section class="question-panel">${triplePrompt(q)}</section>${optionsView(q,null,false,true)}${q.type==='open'?tripleAnswer(q):''}`;
+      body=`<div class="inspect-formats">${C.levels(source).map(n=>B('inspect-format',`${t(n>4?'open':'choice')} · ${C.variant(source,n).points}`,n===level?'small primary':'small',`data-level="${n}" data-question-type="${n>4?'open':'choice'}" aria-pressed="${n===level}"`)).join('')}</div><section class="question-panel">${triplePrompt(q)}</section>${optionsView(q,null,false,true)}${q.type==='open'?tripleAnswer(q):''}`;
       actions=googleLink(q)+(isHidden(m.packId,m.qid)?B('restore',t('restore'),'primary small',`data-pack="${e(m.packId)}" data-qid="${e(m.qid)}"`,'refresh'):B('hide',t('remove'),'small',`data-pack="${e(m.packId)}" data-qid="${e(m.qid)}"`,'eye'));
     }
     if(m.type==='confirm') {
