@@ -1,0 +1,93 @@
+<!doctype html><html lang="zh-Hans"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quiz Party · 问答派对</title><style>@font-face{font-family:SourceHan;src:url(assets/fonts/SourceHanSansSC-VF.ttf.woff2)}*{box-sizing:border-box}body{margin:0;background:#f5f0e6;color:#000;font:18px/1.7 SourceHan,sans-serif}main{max-width:1000px;margin:32px auto;padding:32px;border:3px solid #000;box-shadow:6px 6px #000;background:white}header{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}h1{font-size:32px;margin:0}nav{display:flex;flex-wrap:wrap;gap:10px}a{color:inherit}nav a,.home{padding:6px 12px;border:2px solid #000;text-decoration:none;font-weight:800}nav a[aria-current=true]{background:#ffeb3b}h2{margin:30px 0 12px;font-size:26px}p{margin:12px 0}kbd{font-size:12px;border:1px solid;padding:1px 4px}section[hidden]{display:none}@media(max-width:700px){main{margin:16px;padding:22px}body{font-size:17px}h1{font-size:26px}}</style></head><body><main><header><h1>Quiz Party · 问答派对</h1><a class="home" href="index.html">← <kbd>Q</kbd></a></header><nav aria-label="Language"><a href="#zh-hans">简体中文 <kbd>1</kbd></a><a href="#en">English <kbd>2</kbd></a><a href="#zh-hant">繁體中文 <kbd>3</kbd></a></nav><section id="zh-hans" lang="zh-Hans"><h2>开始前</h2>
+<p>单机模式供 2–8 人共用屏幕。联机文字模式供 2–32 人各用自己的设备。联机口头轮流模式供 2–8 人各用自己的设备。不参赛的主持人不占玩家名额。创建房间和进入单机模式需要管理员解锁。</p>
+<p>开局前确认名单。名字最多 12 个字符，不能重名。开局后名单锁定。迟到者参加下一局。主持人可以参赛，也可以只负责选题、发题、判分和管理。</p>
+<p>选择题为 100、200、300、400 分，简答题为 200、400、600、800 分。每局最多 96 题，轮流模式会调整为完整轮次。</p>
+<p>成品包解压后打开 index.html，单机模式在本地运行。联机入口会打开在线网站。</p>
+<h2>单机步骤</h2>
+<h3>一起回答</h3>
+<ol><li value="1">选择“一起回答”。</li><li value="2">选择题出现后，大家私下在纸上写选项，或把表示选项的手势藏好，准备后同时亮出。</li><li value="3">操作者确认准备好，大家同时亮出。</li><li value="4">操作者揭晓答案，逐人判分并确认积分。</li><li value="5">简答题先读题，大家示意后确认抢答者。只有无法分清先后时才按界面优先序处理平手。确认前认错人可以改，确认后不能改。选定玩家作最终回答，再揭晓和判分。</li><li value="6">无人抢答得 0 分。已锁定的抢答者放弃或答错，按简答题规则扣半分。</li></ol>
+<h3>一起抢答</h3>
+<ol><li value="1">选择“一起抢答”。</li><li value="2">读题后大家示意。只有无法分清先后时才按界面优先序处理平手。确认前可以改，确认后不能改。</li><li value="3">选定玩家完成最终回答。选择题由该玩家选项，简答题由该玩家口头回答。</li><li value="4">揭晓答案，判分并确认。无人抢答得 0 分。已锁定者放弃或答错，选择题扣半分，简答题也扣半分。</li></ol>
+<h3>轮流回答</h3>
+<ol><li value="1">选择“轮流回答”。</li><li value="2">当轮玩家选题并作答，或选择弃答。弃答得 0 分并消耗本轮机会。</li><li value="3">正式答错的选择题得 0 分，简答题扣半分。揭晓后判分确认，再轮到下一位。</li><li value="4">题数按完整轮次设置。例如 5 人的 24 题调整为 20 题。</li></ol>
+<h2>单机共同规则</h2>
+<p>答案揭晓后不能重答。当前题在确认积分前可以复核判分。确认后到进入下一题或结束游戏前，仍可复核当前题。</p>
+<p>题目有误，或设备、打断等破坏公平时，操作者可以作废本题，撤回本题分数，换同分类、同题型、同分值题目。作废题不消耗轮流机会。</p>
+<p>隐藏题目表示以后不再使用，不代表当前取消。查证只在答案揭晓后进行。</p>
+<h2>联机文字步骤</h2>
+<ol><li value="1">主持人创建房间，设置题数、选题、答题时间和判分方式。</li><li value="2">玩家输入六位房间码和不重复名字，加入并点“准备好了”。至少两位参赛玩家在线后才能发新题。</li><li value="3">每题先选题。投票时每人一票，截止前可改。最高票入选，平票随机，无票由主持人选。</li><li value="4">选题后进入准备页，准备页不发送题干。主持人发题后开始 30、60 或 120 秒倒计时。</li><li value="5">选择题各自提交，提交后锁定并自动核对。文字简答提交最终答案，答错扣半分，弃答或超时得 0 分。</li><li value="6">揭晓答案并判分，进入待确认积分阶段。主持人确认后进入本题结果，再按“下一题”继续。最后一题按“确认并结算”结束游戏。</li></ol>
+<h2>联机“轮流作答，简答题口述”步骤</h2>
+<ol><li value="1">选择“轮流作答，简答题口述”。整局按轮次进行，使用 2–8 人。正常完成时每位玩家机会相同。若提前结束，机会可能不完整。题数按完整轮次设置，例如 5 人的 24 题调整为 20 题。</li><li value="2">每题只有当轮玩家作答。其他玩家标记为非当轮，不算作答机会，也不算漏答。</li><li value="3">选择题由当轮玩家点选项。简答题通过已有外部语音聊天口头回答。当前玩家或主持人确认说完最终答案后揭晓。可以弃答，弃答消耗机会并得 0 分，超时也得 0 分。</li><li value="4">当轮玩家或主持人选题。主持人负责发题并开始计时。揭晓、判分、确认后轮到下一位。</li></ol>
+<h2>联机判分</h2>
+<ol><li value="1">主持人判其他玩家的答案。主持人自己的答案由其他玩家判定。</li><li value="2">玩家投票时，每份答案最多三位非作者评审，每位玩家最多三份任务，限时 90 秒。无任务者等待，未投票为弃权。</li><li value="3">有效票多数决定。平票或无票由主持人独立复核。</li><li value="4">“全对”和“全错”只填写当前可判答案草稿。最终确认前不计分。主持人已评分后可只复核一份，不改原答案，不重做整题。</li></ol>
+<h2>联机中断</h2>
+<p>房间连续两小时没有活动，会自动结算已经确认的成绩。在线身份有效期为一天，本机历史和已导出的文件不随房间过期而消失。</p>
+<p>刷新同一浏览器会恢复身份。请用原浏览器的“返回房间”继续。换设备或丢失身份无法恢复，只能参加新局。</p>
+<p>主持人短暂离开时停在准备页或结果页。主持人断线时，已开始的答题或评审按原截止时间继续。积分确认和下一题等待主持人回来，不自动移交主持权。已有成绩可以通过“查看已确认成绩”保存为图片。</p>
+<p>玩家暂时离线保留座位，当前题按弃答或超时处理。设备或题目问题破坏公平时，作废本题，撤回分数，换同分类、同题型、同分值题目。</p>
+<p>真正散场时结束游戏，只算已确认积分。下一局创建新房间并分享新码。</p>
+<h2>设置、结算和记录</h2>
+<p>音效默认开，音乐默认关。音乐每首结束后等待 15 秒再循环。手机题目跟随界面语言，宽屏电脑可显示三语，游戏自带思源黑体。</p>
+<p>结算显示排名、分数走势、答对题数和时长，可导出 PNG。联机对局自动保存本机历史，支持导出导入。单机保留独立存档和题包导入。</p>
+<p>旧存档保留原计分方式。旧局的跳题不会推进轮流顺序，开始新局后使用新的弃答与完整轮次流程。</p>
+<h2>来源与许可</h2>
+<p><a href="docs/题库来源与许可.txt">题库来源与许可</a> · <a href="assets/fonts/LICENSE.txt">思源黑体许可</a> · <a href="assets/vendor/html2canvas.LICENSE">html2canvas 许可</a> · <a href="docs/PageCrypt-LICENSE.txt">PageCrypt 许可</a></p>
+<p>页面加密参考 <a href="https://github.com/FionViber/pagecrypt">PageCrypt</a>。</p></section>
+<section id="en" lang="en"><h2>Before you start</h2>
+<p>Offline mode is for 2–8 players sharing one screen. Online text mode is for 2–32 players on their own devices. Online oral-turn mode is for 2–8 players. A non-playing host uses no player seat. Administrator access is required to create a room or enter offline mode.</p>
+<p>Agree on the list first. Names must be unique and no longer than 12 characters. The list locks when the game starts. Late arrivals play next game. The host may play or only operate the game.</p>
+<p>Multiple-choice questions are worth 100, 200, 300 or 400 points. Short answers are worth 200, 400, 600 or 800. A game has at most 96 questions. Turn-based games use complete cycles.</p>
+<p>To use the release package, unzip it and open index.html. Offline mode runs locally. The online button opens the website.</p>
+<h2>Offline steps</h2>
+<h3>Together</h3>
+<ol><li value="1">Select “Together”.</li><li value="2">For multiple choice, write the option on paper or hide the hand signal for it until everyone reveals together.</li><li value="3">The operator confirms readiness. Everyone reveals together.</li><li value="4">Reveal the answer, judge each player and confirm scores.</li><li value="5">For a short answer, read first. Players signal. Use the interface priority only when the first signal is unclear or tied. Before locking, a mistaken identity may be changed. After locking, it cannot. The selected player gives the final answer, then reveal and judge.</li><li value="6">Nobody signaling scores 0. A locked answerer who passes or is wrong uses the short-answer penalty.</li></ol>
+<h3>Buzz</h3>
+<ol><li value="1">Select “Buzz”.</li><li value="2">Read the question and let players signal. Confirm who signalled first. Use the displayed rotating order only when the group cannot tell who was first. Change is allowed only before locking.</li><li value="3">The selected player answers. Reveal, judge and confirm. Nobody buzzing scores 0. A locked wrong or passed answer loses half for both multiple choice and short answer.</li></ol>
+<h3>Turns</h3>
+<ol><li value="1">Select “Turns”.</li><li value="2">The current player selects and answers, or passes. Passing scores 0 and consumes the turn.</li><li value="3">A wrong submitted multiple-choice answer is 0. A wrong submitted short answer loses half. Reveal, confirm, then move to the next player.</li><li value="4">Use complete cycles. For example, 24 questions with 5 players becomes 20.</li></ol>
+<h2>Shared offline rules</h2>
+<p>After reveal, nobody answers again. Review judgment before confirmation, and until the current question moves to the next question or the game ends.</p>
+<p>If a question or interruption makes play unfair, void it, withdraw its score and replace it with the same category, type and value. A voided question does not consume a turn. Hiding means future non-use, not cancelling the current question. Check sources only after reveal.</p>
+<h2>Online text steps</h2>
+<ol><li value="1">The host creates a room and chooses question count, selection, time and grading.</li><li value="2">Players enter the six-digit code and unique names, join and select “Ready”. At least two participating players must be online to start a new question.</li><li value="3">Select a question. Voting gives one changeable vote per player. The top choice wins. Ties are random. With no votes, the host chooses.</li><li value="4">The preparation page does not send the question text. The host presents it and starts 30, 60 or 120 seconds.</li><li value="5">Players submit multiple-choice answers independently. Text answers lock on submission. A wrong submitted short answer loses half. Pass and timeout score 0.</li><li value="6">Reveal, grade and wait for score confirmation. The host confirms to open that question’s results, then selects Next Question. On the last question, Confirm and Finish settles the game.</li></ol>
+<h2>Online oral turns</h2>
+<ol><li value="1">Choose the option for taking turns with spoken short answers. Use 2–8 players and complete cycles, such as 20 questions for 5 players when the requested count is 24. In a normally completed game, everyone gets the same number of turns. Ending early can leave the cycle incomplete.</li><li value="2">Only the current player answers. Others are not in turn and do not receive an opportunity or a missed-answer count.</li><li value="3">The current player selects multiple choice on their device or answers short answer through an external voice call. The player or host confirms that the final spoken answer is complete, then the answer is revealed. Passing consumes the opportunity and scores 0. Timeout is 0.</li><li value="4">The current player or host selects the question. The host presents it and starts the timer. Reveal, grade and confirm, then move to the next player.</li></ol>
+<h2>Online grading and interruptions</h2>
+<p>Two hours of room inactivity automatically ends the game using confirmed scores. An online identity lasts one day. Local history and exported files remain available after the room expires.</p>
+<p>The host grades other players. Another player grades the host. In player voting, each answer gets at most three non-author reviewers and each player gets at most three tasks. The window is 90 seconds. Unassigned players wait. Abstentions, ties and no votes go to independent host review. “All correct” and “All incorrect” are drafts until confirmation. A host may reopen one answer without replaying the question.</p>
+<p>Refresh in the same browser restores identity. Use Resume room there. A different device or lost identity cannot restore the seat, so join a new game. A host leaving briefly pauses at preparation or results. If the host disconnects, finish the current timed answer or assigned review. Only the host can confirm scores or start the next question. You can still view confirmed scores and save their image. Host control is never transferred randomly. A temporarily offline player keeps the seat and is treated as pass or timeout. If fairness is lost, void and replace the question with the same category, type and value. Finish the game when the gathering ends. Only confirmed scores count. Create a new room for the next game.</p>
+<h2>Settings, results and records</h2>
+<p>Sound effects start on. Music starts off and waits 15 seconds between tracks. Phones follow the interface language. Wide desktop layouts can show all three languages. Offline mode uses local fonts.</p>
+<p>Results show ranking, score progression, correct counts and duration. Export PNG. Finished online games are saved locally and support archive export/import. Offline mode keeps separate saves and question-pack imports.</p>
+<p>Existing saves keep their earlier scoring rules. Skipping in an earlier game does not advance a turn. Start a new game to use the new pass and complete-cycle rules.</p>
+<h2>Credits and licenses</h2>
+<p><a href="docs/题库来源与许可.txt">Question sources and licenses</a> · <a href="assets/fonts/LICENSE.txt">Source Han Sans license</a> · <a href="assets/vendor/html2canvas.LICENSE">html2canvas license</a> · <a href="docs/PageCrypt-LICENSE.txt">PageCrypt license</a></p>
+<p>Page encryption is based on <a href="https://github.com/FionViber/pagecrypt">PageCrypt</a>.</p></section>
+<section id="zh-hant" lang="zh-Hant"><h2>開始前</h2>
+<p>單機模式供 2–8 人共用螢幕。連線文字模式供 2–32 人各用自己的裝置。連線口頭輪流模式供 2–8 人使用。不參賽主持人不占玩家名額。建立房間與進入單機模式需要管理員解鎖。</p>
+<p>開始前確認名單。名字最多 12 個字元，不能重複。開始後名單鎖定。遲到者參加下一局。主持人可以參賽，也可以只負責操作。</p>
+<p>選擇題為 100、200、300、400 分，簡答題為 200、400、600、800 分。每局最多 96 題，輪流模式會調整為完整輪次。</p>
+<p>成品包解壓縮後開啟 index.html，單機模式在本機執行。連線入口會開啟網站。</p>
+<h2>單機步驟</h2>
+<h3>一起回答</h3>
+<ol><li value="1">選擇「一起回答」。</li><li value="2">選擇題先私下在紙上寫選項，或把表示選項的手勢藏好，準備後同時亮出。</li><li value="3">操作者確認準備好，大家同時亮出。</li><li value="4">操作者揭曉答案，逐人判分並確認分數。</li><li value="5">簡答題先讀題，大家示意後確認搶答者。只有無法分清先後時才按介面優先序處理平手。確認前認錯人可以改，確認後不能改。選定玩家作最終回答，再揭曉和判分。</li><li value="6">無人搶答得 0 分。已鎖定者棄答或答錯按簡答題規則扣半分。</li></ol>
+<h3>一起搶答</h3>
+<ol><li value="1">選擇「一起搶答」。</li><li value="2">讀題後大家示意，只有無法分清先後時才按介面優先序處理平手。確認前可改，確認後不可改。</li><li value="3">選定玩家回答。選擇題由該玩家選項，簡答題由該玩家口頭回答。</li><li value="4">揭曉、判分並確認。無人搶答得 0 分。已鎖定者棄答或答錯，選擇題扣半分，簡答題也扣半分。</li></ol>
+<h3>輪流回答</h3>
+<ol><li value="1">選擇「輪流回答」。</li><li value="2">當輪玩家選題並作答，或棄答。棄答得 0 分並消耗本輪機會。</li><li value="3">選擇題正式答錯得 0 分，簡答題正式答錯扣半分。揭曉、確認後輪到下一位。</li><li value="4">題數按完整輪次設定。例如 5 人的 24 題調整為 20 題。</li></ol>
+<h2>單機共同規則</h2>
+<p>答案揭曉後不能重答。當前題在確認分數前可以複核判分。確認後到進入下一題或結束遊戲前，仍可複核當前題。</p>
+<p>題目有誤，或裝置、打斷破壞公平時，可以作廢本題，撤回分數，換同分類、同題型、同分值題目。作廢題不消耗輪流機會。隱藏題目代表之後不再使用，不代表目前取消。查證只在答案揭曉後進行。</p>
+<h2>連線步驟</h2>
+<ol><li value="1">主持人建立房間，設定題數、選題、答題時間和判分。</li><li value="2">玩家輸入六位房間碼和不重複名字，加入並按「準備好了」。至少兩位參賽玩家在線後才能發新題。</li><li value="3">每題先選題。投票時每人一票，截止前可改。最高票入選，平票隨機，無票由主持人選。</li><li value="4">選題後先進入準備頁，不發送題幹。主持人發題後開始 30、60 或 120 秒倒數。</li><li value="5">文字選擇題各自提交並自動核對。文字簡答提交後鎖定，答錯扣半分，棄答或逾時得 0 分。</li><li value="6">選擇「輪流作答，簡答題口述」。整局輪流，使用 2–8 人。正常完成時每位玩家機會相同，提前結束時機會可能不完整。每題只有當輪玩家作答。選擇題由當輪玩家點選項，簡答題用外部語音聊天口頭回答。當輪玩家或主持人確認說完最終答案後揭曉。當輪玩家可棄答，消耗機會並得 0 分。主持人負責發題並開始計時，也可代選題。</li><li value="7">揭曉、判分、等待確認分數。主持人確認後進入本題結果，再按「下一題」繼續。最後一題按「確認並結算」結束。題數按完整輪次設定，例如 5 人的 24 題調整為 20 題。</li></ol>
+<h2>連線判分和中斷</h2>
+<p>房間連續兩小時沒有活動，會自動結算已確認的成績。連線身分有效期為一天，本機歷史與已匯出的檔案不會隨房間過期而消失。</p>
+<p>主持人判其他玩家，自己的答案由其他玩家判定。玩家投票時每份答案最多三位非作者評審，每位玩家最多三份任務，限時 90 秒。無任務者等待，未投票為棄權。多數決定，平票或無票由主持人獨立複核。「全對」和「全錯」只填寫草稿，確認前不計分。主持人可只複核一份，不改答案，不重做整題。</p>
+<p>同一瀏覽器重新整理會恢復身分，請用「返回房間」繼續。換裝置或遺失身分無法恢復，只能參加新局。主持人短暫離開停在準備頁或結果頁。主持人斷線時，已開始的答題或評審按原截止時間繼續。積分確認與下一題等待主持人回來，不自動移交主持權。已有成績可透過「查看已確認成績」儲存圖片。玩家離線保留座位，按棄答或逾時處理。公平被破壞時作廢並換同分類、同題型、同分值題目。散場時結束遊戲，只算已確認分數，下一局建立新房間。</p>
+<h2>設定、結算和紀錄</h2>
+<p>音效預設開啟，音樂預設關閉，每首結束後等待 15 秒再循環。手機題目跟隨介面語言，寬屏電腦可顯示三語，單機使用本地字型。</p>
+<p>結算顯示排名、分數走勢、答對題數和時長，可匯出 PNG。連線對局自動保存本機歷史，支援匯出匯入。單機保留獨立存檔和題包匯入。</p>
+<p>舊存檔保留原計分方式。舊局跳題不會推進輪流順序，開始新局後使用新的棄答與完整輪次流程。</p>
+<h2>來源與授權</h2>
+<p><a href="docs/题库来源与许可.txt">題庫來源與授權</a> · <a href="assets/fonts/LICENSE.txt">思源黑體授權</a> · <a href="assets/vendor/html2canvas.LICENSE">html2canvas 授權</a> · <a href="docs/PageCrypt-LICENSE.txt">PageCrypt 授權</a></p>
+<p>頁面加密參考 <a href="https://github.com/FionViber/pagecrypt">PageCrypt</a>。</p></section><script>function show(){var id=location.hash.slice(1)||"zh-hans";if(!["zh-hans","en","zh-hant"].includes(id))id="zh-hans";document.querySelectorAll("section").forEach(s=>s.hidden=s.id!==id);document.querySelectorAll("nav a").forEach(a=>a.setAttribute("aria-current",a.hash==="#"+id));document.documentElement.lang=document.getElementById(id).lang;}addEventListener("hashchange",show);addEventListener("keydown",e=>{if(e.ctrlKey||e.metaKey||e.altKey||e.shiftKey||e.repeat)return;var id={Digit1:"zh-hans",Digit2:"en",Digit3:"zh-hant"}[e.code];if(id){e.preventDefault();location.hash=id;}if(e.code==="KeyQ")location.href="index.html";});show();</script></main></body></html>
