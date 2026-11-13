@@ -29,10 +29,13 @@ function snapshot(game,recordedAt=new Date().toISOString()) {
   const C=core();
   if(!isObject(game)||game.finished!==true||typeof game.id!=='string'||!game.id||!isObject(game.pack)||!Array.isArray(game.players)||game.players.length<2||game.players.length>8||!Array.isArray(game.history))throw historyError('A finished game is required');
   const variants=[];
-  for(const slot of (game.board||[])){
+  const historyQids=new Set([...(game.board||[]).map(slot=>slot.qid),...(game.retired||[]).map(slot=>slot.qid),...(game.history||[]).map(h=>h.qid)]);
+  const variantIds=new Set();
+  for(const slot of [...(game.board||[]),...(game.retired||[])].filter(slot=>historyQids.has(slot.qid)&&!variantIds.has(slot.qid))){
     const base=game.pack.questions?.find(q=>q.id===slot.qid);if(!base)throw historyError('Finished game has an unknown question');
     const q=C.variant(base,slot.level);
     variants.push({id:q.id,level:q.level,type:q.type,points:q.points,...(q.type==='choice'?{options:[...q.options],correctOptionId:q.correctOptionId}:{})});
+    variantIds.add(slot.qid);
   }
   if(!validTimes(game))throw historyError('Invalid game duration');
   const compact={rulesVersion:game.rulesVersion,id:game.id,startedAt:game.startedAt,finishedAt:game.finishedAt,durationMs:game.durationMs,finished:true,mode:game.mode,players:[...game.players],questionTarget:game.questionTarget||game.board?.length||0,history:cleanHistory(game.history),current:null,pack:{id:game.pack.id,version:game.pack.version,schemaVersion:game.pack.schemaVersion,title:clone(game.pack.title)},questionVariants:variants};
@@ -41,17 +44,19 @@ function snapshot(game,recordedAt=new Date().toISOString()) {
   validateRecord(out);return out;
 }
 function validateRecord(raw){
-  if(!isObject(raw)||raw.schemaVersion!==SCHEMA_VERSION||typeof raw.id!=='string'||raw.id.length<1||raw.id.length>160||typeof raw.recordedAt!=='string'||!Number.isFinite(Date.parse(raw.recordedAt))||!isObject(raw.game)||raw.game.finished!==true||typeof raw.game.id!=='string'||raw.game.id!==raw.id||!['together','buzz','turns'].includes(raw.game.mode)||!isObject(raw.game.pack)||typeof raw.game.pack.id!=='string'||typeof raw.game.pack.version!=='string'||!Number.isInteger(raw.game.pack.schemaVersion)||![1,2,3].includes(raw.game.pack.schemaVersion)||!isObject(raw.game.pack.title)||['en','zh-Hans','zh-Hant'].some(l=>typeof raw.game.pack.title[l]!=='string'||!raw.game.pack.title[l].trim())||!Number.isInteger(raw.game.questionTarget)||raw.game.questionTarget<1||!Array.isArray(raw.game.players)||raw.game.players.length<2||raw.game.players.length>8||!Array.isArray(raw.game.questionVariants)||raw.game.questionVariants.length!==raw.game.questionTarget||!Array.isArray(raw.game.history)||raw.game.history.length>raw.game.questionTarget||raw.game.current!==null||JSON.stringify(raw).length>MAX_JSON)throw historyError('Invalid results history');
+  if(!isObject(raw)||raw.schemaVersion!==SCHEMA_VERSION||typeof raw.id!=='string'||raw.id.length<1||raw.id.length>160||typeof raw.recordedAt!=='string'||!Number.isFinite(Date.parse(raw.recordedAt))||!isObject(raw.game)||raw.game.finished!==true||typeof raw.game.id!=='string'||raw.game.id!==raw.id||!['together','buzz','turns'].includes(raw.game.mode)||!isObject(raw.game.pack)||typeof raw.game.pack.id!=='string'||typeof raw.game.pack.version!=='string'||!Number.isInteger(raw.game.pack.schemaVersion)||![1,2,3].includes(raw.game.pack.schemaVersion)||!isObject(raw.game.pack.title)||['en','zh-Hans','zh-Hant'].some(l=>typeof raw.game.pack.title[l]!=='string'||!raw.game.pack.title[l].trim())||!Number.isInteger(raw.game.questionTarget)||raw.game.questionTarget<1||!Array.isArray(raw.game.players)||raw.game.players.length<2||raw.game.players.length>8||!Array.isArray(raw.game.questionVariants)||raw.game.questionVariants.length<raw.game.questionTarget||!Array.isArray(raw.game.history)||raw.game.history.length>raw.game.questionVariants.length||raw.game.current!==null||JSON.stringify(raw).length>MAX_JSON)throw historyError('Invalid results history');
   if(!validTimes(raw.game))throw historyError('Invalid results history');
   const C=core(), variants=new Map();
   if(!C.SUPPORTED_RULES_VERSIONS.includes(raw.game.rulesVersion)) throw historyError('Invalid results history');
-  if(raw.game.players.some(n=>!validPlayerName(n,raw.game.rulesVersion))) throw historyError('Invalid results history');
+  const playerKeys=new Set();
+  if(raw.game.players.some(n=>!validPlayerName(n,raw.game.rulesVersion)||(raw.game.rulesVersion>=5&&(playerKeys.has(String(n).normalize('NFC').trim().toLocaleLowerCase())||!playerKeys.add(String(n).normalize('NFC').trim().toLocaleLowerCase()))))) throw historyError('Invalid results history');
+  if(raw.game.rulesVersion>=5&&raw.game.mode==='turns'&&raw.game.questionTarget%raw.game.players.length!==0) throw historyError('Invalid results history');
   for(const q of raw.game.questionVariants){
     if(!isObject(q)||typeof q.id!=='string'||!Number.isInteger(q.level)||q.level<1||q.level>8||!['choice','open'].includes(q.type)||q.points!==expectedPoints(raw.game.pack,q)||variants.has(q.id))throw historyError('Invalid results history');
     if(q.type==='choice'&&(!Array.isArray(q.options)||!q.options.length||typeof q.correctOptionId!=='string'||!q.options.includes(q.correctOptionId)))throw historyError('Invalid results history');
     variants.set(q.id,q);
   }
-  const ids=new Set();
+  const ids=new Set(),committedCount={value:0};
   for(const h of raw.game.history){
     if(!isObject(h)||typeof h.qid!=='string'||ids.has(h.qid)||!variants.has(h.qid)||typeof h.level!=='number'||typeof h.type!=='string'||typeof h.points!=='number'||typeof h.voided!=='boolean'||!Array.isArray(h.deltas)||h.deltas.length!==raw.game.players.length||!h.deltas.every(Number.isFinite)||!Array.isArray(h.judgments)||h.judgments.length!==raw.game.players.length||h.judgments.some(v=>v!==null&&typeof v!=='boolean'))throw historyError('Invalid results history');
     const q=variants.get(h.qid);if(h.level!==q.level||h.type!==q.type||h.points!==q.points||h.key!==`${raw.game.pack.id}::${h.qid}`)throw historyError('Invalid results history');
@@ -59,7 +64,7 @@ function validateRecord(raw){
     if(h.selected!==null&&typeof h.selected!=='string')throw historyError('Invalid results history');
     if(q.type==='choice'&&h.selected!==null&&!q.options.includes(h.selected))throw historyError('Invalid results history');
     if(q.type==='open'&&h.selected!==null)throw historyError('Invalid results history');
-    if(!h.voided){let expected;try{expected=C.scoreQuestion(raw.game.mode,q,h.judgments,h.answerer,raw.game.players.length,raw.game.rulesVersion);}catch(_){throw historyError('Invalid results history');}if(expected.some((v,i)=>v!==h.deltas[i]))throw historyError('Invalid results history');}
+    if(!h.voided){if(raw.game.rulesVersion>=5&&raw.game.mode==='turns'&&h.answerer!==committedCount.value%raw.game.players.length)throw historyError('Invalid results history');let expected;try{expected=C.scoreRecord(raw.game.mode,q,h,raw.game.players.length,raw.game.rulesVersion);}catch(_){throw historyError('Invalid results history');}if(expected.some((v,i)=>v!==h.deltas[i]))throw historyError('Invalid results history');committedCount.value++;}
     ids.add(h.qid);
   }
   return raw;

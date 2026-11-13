@@ -10,7 +10,7 @@ import {
   verifyAdminProof,
   verifyToken
 } from './auth.mjs';
-import { metadata, boardPlan } from './catalog.mjs';
+import { metadata, boardPlan, replacementPlan } from './catalog.mjs';
 import * as Engine from './room-engine.mjs';
 
 const json = (value, status = 200) =>
@@ -129,7 +129,7 @@ export default {
       if (request.method === 'GET' && path === '/api/meta') {
         const catalog = await metadata(env.DB);
         response = json({
-          protocol: 1,
+          protocol: 2,
           categories: catalog.categories,
           bankFingerprint: catalog.packIdentity.fingerprint,
           configured: !!env.ADMIN_PUBLIC_JWK && !!env.TOKEN_SECRET
@@ -375,14 +375,28 @@ export class QuizRoom extends DurableObject {
   assertRoom() {
     if (!this.room) throw error('ROOM_NOT_FOUND', 404);
     if (this.expiresAt() <= Date.now()) throw error('ROOM_EXPIRED', 410);
+    if (this.room.rulesVersion !== 2) throw error('ROOM_VERSION_UNSUPPORTED', 409);
   }
   async advance() {
+    if (!this.room) return false;
+    if (this.room.rulesVersion !== 2) throw error('ROOM_VERSION_UNSUPPORTED', 409);
+    if (this.expiresAt() <= Date.now()) {
+      if (this.room.startedAt && this.room.phase !== 'finished') {
+        const ended = clone(this.room);
+        Engine.finishInactive(ended, Date.now());
+        await this.save(ended);
+        this.broadcast();
+      } else await this.expire();
+      return true;
+    }
     const next = clone(this.room);
     Engine.tick(next, Date.now());
     if (JSON.stringify(next) !== JSON.stringify(this.room)) {
       await this.save(next);
       this.broadcast();
+      return true;
     }
+    return false;
   }
   send(socket, value) {
     try {
@@ -420,6 +434,7 @@ export class QuizRoom extends DurableObject {
         if (path === '/create') {
           const data = await request.json();
           if (this.room) {
+            await this.advance();
             this.assertRoom();
             if (this.room.id === data.id && this.room.hostId === data.hostId)
               return json({ ok: true });
@@ -432,8 +447,8 @@ export class QuizRoom extends DurableObject {
           await this.save(next);
           return json({ ok: true });
         }
-        this.assertRoom();
         await this.advance();
+        this.assertRoom();
         if (path === '/join') {
           const data = await request.json(),
             next = clone(this.room);
@@ -506,6 +521,7 @@ export class QuizRoom extends DurableObject {
     return this.exclusive(async () => {
       let command;
       try {
+        if (this.room && this.expiresAt() <= Date.now()) await this.advance();
         this.assertRoom();
         const who = socket.deserializeAttachment();
         if (
@@ -530,13 +546,37 @@ export class QuizRoom extends DurableObject {
         }
         if (!command || typeof command.type !== 'string' || typeof command.id !== 'string')
           throw error('INVALID_REQUEST');
-        if (command.protocol !== 1) throw error('CLIENT_UPDATE_REQUIRED');
+        if (command.protocol !== 2) throw error('CLIENT_UPDATE_REQUIRED');
         await this.advance();
         const next = clone(this.room),
           context = {};
+        if (next.processed?.[who.actorId]?.[command.id]) {
+          this.send(socket, { type: 'ack', id: command.id, revision: next.revision });
+          return;
+        }
         if (command.type === 'start') {
           if (who.actorId !== next.hostId || next.phase !== 'lobby') throw error('FORBIDDEN', 403);
-          context.boardPlan = next.preparedBoard || (await boardPlan(this.env.DB, next.settings));
+          const participantCount = Object.values(next.players).filter((p) => p.player).length;
+          const oralCount =
+            next.settings.openResponse === 'oral'
+              ? Math.floor(next.settings.questionCount / Math.max(1, participantCount)) *
+                Math.max(1, participantCount)
+              : next.settings.questionCount;
+          context.boardPlan = await boardPlan(this.env.DB, {
+            ...next.settings,
+            questionCount: oralCount,
+            flexibleCount: next.settings.openResponse === 'oral'
+          });
+        }
+        if (command.type === 'voidQuestion') {
+          if (who.actorId !== next.hostId) throw error('forbidden', 403);
+          if (!['answering', 'grading', 'review', 'scoreReview', 'results'].includes(next.phase))
+            throw error('wrongPhase');
+          if (!next.current || command.roundId !== next.current.id) throw error('staleRound');
+          const old = next.current && next.board.find((x) => x.id === next.current.tileId);
+          const oldQ = old && next.questions.find((q) => q.id === old.qid);
+          const used = [...next.board.map((x) => x.qid), ...(next.retired || [])];
+          context.replacement = await replacementPlan(this.env.DB, next.settings, old, oldQ, used);
         }
         Engine.apply(next, who.actorId, command, Date.now(), context);
         if (command.type === 'start') delete next.preparedBoard;
@@ -582,12 +622,13 @@ export class QuizRoom extends DurableObject {
   async alarm() {
     return this.exclusive(async () => {
       if (!this.room) return;
-      if (this.expiresAt() <= Date.now()) {
-        await this.expire();
+      if (this.room.rulesVersion !== 2) {
+        if (this.expiresAt() <= Date.now()) await this.expire();
+        else await this.ctx.storage.setAlarm(this.expiresAt());
         return;
       }
-      await this.advance();
-      if (this.room) await this.save(this.room);
+      const changed = await this.advance();
+      if (!changed && this.room) await this.save(this.room);
     });
   }
 }

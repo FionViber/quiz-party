@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/wrangler/config-schema.json",
-  "name": "quiz-party-api",
+  "name": "quiz-party-api-v2",
   "main": "index.mjs",
   "compatibility_date": "2026-11-13",
   "workers_dev": true,

@@ -1,6 +1,6 @@
 {
   "name": "quiz-party",
-  "version": "6.0.0",
+  "version": "6.1.0",
   "private": true,
   "scripts": {
     "dev": "wrangler dev --config worker/wrangler.jsonc",

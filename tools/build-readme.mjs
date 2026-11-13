@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const source = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
+const source = fs.readFileSync(path.join(root, 'README.md'), 'utf8').replaceAll('\r\n', '\n');
 const escape = (value) =>
   value
     .replaceAll('&', '&amp;')
@@ -10,6 +10,30 @@ const escape = (value) =>
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;');
 const inline = (value) => escape(value).replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+function renderBlocks(text) {
+  const output = [];
+  let list = [];
+  const flush = () => {
+    if (list.length) {
+      output.push('<ol>' + list.join('') + '</ol>');
+      list = [];
+    }
+  };
+  for (const paragraph of text.trim().split(/\n\s*\n/)) {
+    const step = paragraph.match(/^(\d+)\.\s+([\s\S]+)$/);
+    if (step) {
+      list.push('<li value="' + step[1] + '">' + inline(step[2].replaceAll('\n', ' ')) + '</li>');
+      continue;
+    }
+    flush();
+    if (paragraph.startsWith('#### ')) output.push('<h3>' + inline(paragraph.slice(5)) + '</h3>');
+    else if (paragraph.startsWith('### '))
+      output.push('<h2>' + inline(paragraph.slice(4)) + '</h2>');
+    else output.push('<p>' + inline(paragraph.replaceAll('\n', ' ')) + '</p>');
+  }
+  flush();
+  return output.join('\n');
+}
 const ids = { 简体中文: 'zh-hans', English: 'en', 繁體中文: 'zh-hant' },
   blocks = source.split(/\n## /).slice(1);
 const sections = blocks
@@ -18,16 +42,7 @@ const sections = blocks
       name = block.slice(0, end),
       id = ids[name];
     if (!id) throw new Error('Unknown README language');
-    const body = block
-      .slice(end)
-      .trim()
-      .split(/\n\s*\n/)
-      .map((p) =>
-        p.startsWith('### ')
-          ? '<h2>' + inline(p.slice(4)) + '</h2>'
-          : '<p>' + inline(p.replaceAll('\n', ' ')) + '</p>'
-      )
-      .join('\n');
+    const body = renderBlocks(block.slice(end));
     return (
       '<section id="' +
       id +

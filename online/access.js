@@ -197,7 +197,9 @@
       initialSettings.NeoInitialLanguage = initialLanguage;
     frame.srcdoc = payload.offlineHtml.replace(
       '</head>',
-      '<script>Object.assign(window,' + JSON.stringify(initialSettings) + ');</script></head>'
+      '<script>Object.assign(window,' +
+        JSON.stringify(initialSettings) +
+        ');window.NeoDownload=function(blob,name){return parent.QuizApp.download(blob,name);};</script></head>'
     );
     const closeOffline = () => {
       if (offlineFrame !== frame) return;

@@ -10,6 +10,11 @@ window.NeoI18n = {
     "题库",
     "題庫"
   ],
+  "libraryBlocked": [
+    "Question library is available after the answer is revealed.",
+    "显示答案后才能查看题库。",
+    "顯示答案後才能查看題庫。"
+  ],
   "rules": [
     "How to play",
     "玩法",
@@ -160,6 +165,11 @@ window.NeoI18n = {
     "玩家名字",
     "玩家名字"
   ],
+  "duplicateNames": [
+    "Player names must be unique (ignoring case and surrounding spaces).",
+    "玩家姓名不能重复（不区分大小写和首尾空格）。",
+    "玩家姓名不能重複（不區分大小寫和首尾空格）。"
+  ],
   "player": [
     "Player {n}",
     "玩家{n}",
@@ -175,20 +185,35 @@ window.NeoI18n = {
     "开始游戏",
     "開始遊戲"
   ],
+  "pauseQuestionDesc": [
+    "Return home and keep this question open. Use Continue game to return. To give up the question, use its Pass button instead.",
+    "返回主界面并保留当前题目，稍后可继续本局。若要放弃作答，请使用本题的弃答按钮。",
+    "返回主界面並保留目前題目，稍後可繼續本局。若要放棄作答，請使用本題的棄答按鈕。"
+  ],
+  "chooseBuzzerFirst": [
+    "Select who signalled first. If the order is unclear, use the priority shown below.",
+    "先选出最先示意的玩家。分不清先后时，按下方名单顺序裁决。",
+    "先選出最先示意的玩家。分不清先後時，按下方名單順序裁決。"
+  ],
+  "confirmBuzzerHint": [
+    "Selected {name}. Confirm this player before they give their final answer.",
+    "已选中 {name}，请先点击“确认作答者”，再由该玩家给出最终答案。",
+    "已選中 {name}，請先按「確認作答者」，再由該玩家給出最終答案。"
+  ],
   "rulesTogether": [
-    "Multiple choice (100, 200, 300, 400 points): choose privately, then share your choices together. The operator reveals the answer and marks each player right or wrong. Right adds the question value. Wrong costs nothing. Short answer (200, 400, 600, 800 points): agree who signaled first, then select that player. After the answer, reveal the answer and judge it. Right adds the question value. Wrong costs half. Confirm the scores to continue.",
-    "选择题（100、200、300、400分）：各自选好答案，再同时公布。操作者显示答案并标记每位玩家的对错。答对加该题分值，答错不扣分。简答题（200、400、600、800分）：现场确认谁先示意作答，再选择该玩家。玩家回答后显示答案并判定对错。答对加该题分值，答错扣一半。确认积分后继续。",
-    "選擇題（100、200、300、400分）：各自選好答案，再同時公布。操作者顯示答案並標記每位玩家的對錯。答對加該題分值，答錯不扣分。簡答題（200、400、600、800分）：現場確認誰先示意作答，再選擇該玩家。玩家回答後顯示答案並判定對錯。答對加該題分值，答錯扣一半。確認積分後繼續。"
+    "Multiple choice (100, 200, 300, 400 points): choose privately, then show everyone's choices together before revealing the answer. Wrong choices cost nothing. Short answer (200, 400, 600, 800 points): confirm who buzzed first, hear the final answer, then reveal and judge. Correct answers earn full points. Wrong answers or abandoning after buzzing lose half. No buzzer means 0 points.",
+    "选择题（100、200、300、400分）：各自选好答案，准备后同时亮出，再揭晓和记分，答错不扣分。简答题（200、400、600、800分）：确认抢答者，再回答、揭晓和判分。答对加分，答错或锁定后放弃扣一半，无人抢答不扣分。",
+    "選擇題（100、200、300、400分）：各自選好答案，準備後同時亮出，再揭曉和記分，答錯不扣分。簡答題（200、400、600、800分）：確認搶答者，再回答、揭曉和判分。答對加分，答錯或鎖定後放棄扣一半，無人搶答不扣分。"
   ],
   "rulesBuzz": [
-    "For every question, agree who signaled first, then select that player. Multiple choice (100, 200, 300, 400 points) uses the player’s selected option. Short answer (200, 400, 600, 800 points) is answered aloud. Reveal the answer, check the result, then confirm the score. A right answer adds the question value. A wrong answer loses half the value.",
-    "每题先在现场确认谁先示意作答，再选择该玩家。选择题（100、200、300、400分）选中玩家的答案，简答题（200、400、600、800分）由玩家回答。随后显示答案、核对结果并确认积分。答对加该题分值，答错扣该题分值的一半。",
-    "每題先在現場確認誰先示意作答，再選擇該玩家。選擇題（100、200、300、400分）選取玩家的答案，簡答題（200、400、600、800分）由玩家回答。隨後顯示答案、核對結果並確認積分。答對加該題分值，答錯扣該題分值的一半。"
+    "For every question, agree who signaled first. If the order is unclear, use the displayed rotating priority. Confirm the player before recording an option or spoken answer. The confirmed player cannot be changed after reveal. A no-answer pass before a player is confirmed costs 0. Abandoning after confirmation costs half. Reveal, judge, then confirm the score.",
+    "每题先现场确认谁最先示意。若分不清先后，按屏幕显示的轮换优先顺序裁决。记录选项或口头回答前先确认作答者，显示答案后不能换人。确认前无人抢答记 0 分，确认作答者后放弃按错扣一半。显示答案、判定后确认积分。",
+    "每題先現場確認誰最先示意。若分不清先後，按螢幕顯示的輪換優先順序裁決。記錄選項或口頭回答前先確認作答者，顯示答案後不能換人。確認前無人搶答記 0 分，確認作答者後放棄按錯扣一半。顯示答案、判定後確認積分。"
   ],
   "rulesTurns": [
-    "Players take turns in the order listed on every question. Multiple choice (100, 200, 300, 400 points) uses the current player’s option and reveals the answer. The game checks it. Short answer (200, 400, 600, 800 points) is answered aloud, then revealed and marked right or wrong. A right answer adds the question value. A wrong answer costs nothing on multiple choice and half the value on short-answer questions. Confirm the score, then continue to the next player.",
-    "所有题目都按玩家顺序轮流回答。选择题（100、200、300、400分）选中当前玩家的答案，显示答案后自动判定对错。简答题（200、400、600、800分）由当前玩家回答，再显示答案并标记对错。答对加该题分值，选择题答错不扣分，简答题答错扣一半。确认积分后进入下一题，轮到下一位玩家。",
-    "所有題目都依玩家順序輪流回答。選擇題（100、200、300、400分）選取目前玩家的答案，顯示答案後自動判定對錯。簡答題（200、400、600、800分）由目前玩家回答，再顯示答案並標記對錯。答對加該題分值，選擇題答錯不扣分，簡答題答錯扣一半。確認積分後進入下一題，輪到下一位玩家。"
+    "Players take turns in the listed order. The round length is a complete number of turns, so everyone gets the same number of questions. The current player chooses or answers aloud. Reveal only after the answer is locked. A wrong choice costs 0. A wrong short answer costs half. A pass costs 0 and moves to the next player. Confirm the score, then continue. A revealed question cannot be answered again.",
+    "所有题目按玩家顺序轮流回答。本局题数按完整轮次计算，确保每人题数相同。当前玩家选择或口头回答，锁定作答后才能显示答案。选择题答错 0 分，简答题答错扣一半。弃答记 0 分并轮到下一位。确认积分后继续，显示答案后不能重答。",
+    "所有題目依玩家順序輪流回答。本局題數按完整輪次計算，確保每人題數相同。目前玩家選擇或口頭回答，鎖定作答後才能顯示答案。選擇題答錯 0 分，簡答題答錯扣一半。棄答記 0 分並輪到下一位。確認積分後繼續，顯示答案後不能重答。"
   ],
   "boardTitle": [
     "Which one this time?",
@@ -255,6 +280,11 @@ window.NeoI18n = {
     "轮到：{name}",
     "輪到：{name}"
   ],
+  "questionPicker": [
+    "Question picker: {name}",
+    "选题者：{name}",
+    "選題者：{name}"
+  ],
   "google": [
     "Search Google",
     "用 Google 搜索",
@@ -271,14 +301,39 @@ window.NeoI18n = {
     "隱藏這道題？"
   ],
   "deleteDesc": [
-    "This question, in every format, will be unavailable in this and future games until you restore it in Hidden questions. If it is currently being answered and has not been scored, it is skipped without changing scores or advancing the turn. Confirmed scores are kept.",
-    "隐藏后，本局和之后的对局都不能再选到此题的任何题型，可在“已隐藏题目”中恢复。若正在作答且尚未计分，将跳过本题，不扣分、不占轮次。已经确认的分数保留。",
-    "隱藏後，本局和之後的對局都不能再選到此題的任何題型，可在「已隱藏題目」中復原。若正在作答且尚未計分，將跳過本題，不扣分、不占輪次。已經確認的分數保留。"
+    "This question, in every format, will be unavailable in this and future games until you restore it in Hidden questions. Hiding is separate from No answer and does not record a score. Confirmed scores are kept.",
+    "隐藏后，本局和之后的对局都不能再选到此题的任何题型，可在“已隐藏题目”中恢复。隐藏与“无人作答”分开，不会记录本题分数。已经确认的分数保留。",
+    "隱藏後，本局和之後的對局都不能再選到此題的任何題型，可在「已隱藏題目」中復原。隱藏與「無人作答」分開，不會記錄本題分數。已經確認的分數保留。"
   ],
   "deleteConfirm": [
     "Hide this question",
     "隐藏这道题",
     "隱藏這道題"
+  ],
+  "voidQuestion": [
+    "Void question",
+    "作废本题",
+    "作廢本題"
+  ],
+  "voidQuestionTitle": [
+    "Void this question?",
+    "作废这道题？",
+    "作廢這道題？"
+  ],
+  "voidQuestionDesc": [
+    "Withdraw this question's score without using a turn. Replace it with an unused question from the same category, format and point value when available.",
+    "撤回本题分数，不消耗轮流机会。若有合适题目，题板会补入同分类、同题型、同分值的新题。",
+    "撤回本題分數，不消耗輪流機會。若有合適題目，題板會補入同分類、同題型、同分值的新題。"
+  ],
+  "questionVoided": [
+    "Question voided and replaced.",
+    "本题已作废并补充新题。",
+    "本題已作廢並補充新題。"
+  ],
+  "questionVoidedNoReplacement": [
+    "Question voided. No matching replacement was available. The round may end with fewer questions.",
+    "本题已作废，但没有可替换的同型同分题。本局可能少一道题。",
+    "本題已作廢，但沒有可替換的同型同分題。本局可能少一道題。"
   ],
   "deletedToast": [
     "Question hidden. You can restore it in Hidden questions.",
@@ -286,9 +341,14 @@ window.NeoI18n = {
     "題目已隱藏，可在「已隱藏題目」中復原。"
   ],
   "collectiveHint": [
-    "Choose privately, then share your choices at the same time. After that, reveal the answer.",
-    "各自选好答案，再同时公布选择，最后显示答案。",
-    "各自選好答案，再同時公布選擇，最後顯示答案。"
+    "Write down an option privately or hide the number with a hand signal. Get ready without changing it.",
+    "私下写下选项或藏好数字手势，准备好后不要再改变。",
+    "私下寫下選項或藏好數字手勢，準備好後不要再改變。"
+  ],
+  "collectiveReadyHint": [
+    "Reveal your choices at the same time and keep them unchanged. Then reveal the standard answer.",
+    "同时亮出答案并保持不变，再显示标准答案。",
+    "同時亮出答案並保持不變，再顯示標準答案。"
   ],
   "racePenalty": [
     "Right +{p} / Wrong −{h}",
@@ -304,6 +364,108 @@ window.NeoI18n = {
     "Who signaled first?",
     "谁先示意作答？",
     "誰先示意作答？"
+  ],
+  "lockAnswerer": [
+    "Confirm player",
+    "确认作答者",
+    "確認作答者"
+  ],
+  "passAnswer": [
+    "No answer",
+    "无人作答",
+    "無人作答"
+  ],
+  "passTurns": [
+    "No answer · 0 points",
+    "本题不答 · 0分",
+    "本題不答 · 0分"
+  ],
+  "passCollective": [
+    "Everyone passes · 0 points",
+    "全员不答 · 0分",
+    "全員不答 · 0分"
+  ],
+  "passRace": [
+    "No one buzzed · 0 points",
+    "无人抢答 · 0分",
+    "無人搶答 · 0分"
+  ],
+  "legacyRound": ["Earlier scoring rules", "旧规则存档", "舊規則存檔"],
+  "legacySkip": ["Skip under earlier rules", "跳过本题（旧规则）", "跳過本題（舊規則）"],
+  "legacySkipDesc": [
+    "This saved game keeps its original rules. Skip without changing scores or advancing the turn. Start a new game to use the new pass rules.",
+    "这个存档保留原规则。跳过本题不改变分数，也不推进轮流顺序。新开一局即可使用弃答推进的新规则。",
+    "這個存檔保留原規則。跳過本題不改變分數，也不推進輪流順序。新開一局即可使用棄答推進的新規則。"
+  ],
+  "abandonAnswer": [
+    "Give up · −{h} points",
+    "放弃作答 · −{h}分",
+    "放棄作答 · −{h}分"
+  ],
+  "passTurnsTitle": [
+    "Pass this turn?",
+    "本题弃答？",
+    "本題棄答？"
+  ],
+  "passTurnsDesc": [
+    "This player scores 0 and the next player takes the next question.",
+    "本题记 0 分，下一题轮到下一位玩家。",
+    "本題記 0 分，下一題輪到下一位玩家。"
+  ],
+  "passCollectiveTitle": [
+    "Everyone passes?",
+    "全员不答？",
+    "全員不答？"
+  ],
+  "passCollectiveDesc": [
+    "Everyone scores 0 for this question.",
+    "本题全员记 0 分。",
+    "本題全員記 0 分。"
+  ],
+  "passRaceTitle": [
+    "No one buzzed?",
+    "无人抢答？",
+    "無人搶答？"
+  ],
+  "passRaceDesc": [
+    "No player is recorded as the answerer. This question scores 0.",
+    "不记录作答者，本题记 0 分。",
+    "不記錄作答者，本題記 0 分。"
+  ],
+  "abandonAnswerTitle": [
+    "Abandon {name}'s answer?",
+    "{name} 放弃作答？",
+    "{name} 放棄作答？"
+  ],
+  "abandonAnswerDesc": [
+    "The locked answerer loses {h} points.",
+    "已锁定的作答者扣 {h} 分。",
+    "已鎖定的作答者扣 {h} 分。"
+  ],
+  "passAnswerTitle": [
+    "Record no answer?",
+    "记录无人作答？",
+    "記錄無人作答？"
+  ],
+  "passAnswerDesc": [
+    "This question scores 0. A confirmed answerer who abandons is scored as wrong.",
+    "本题记 0 分。已确认作答者放弃则按答错计分。",
+    "本題記 0 分。已確認作答者放棄則按答錯計分。"
+  ],
+  "confirmPassAnswer": [
+    "Confirm",
+    "确认",
+    "確認"
+  ],
+  "lockAnswererFirst": [
+    "Confirm the answering player before revealing.",
+    "请先确认作答者，再显示答案。",
+    "請先確認作答者，再顯示答案。"
+  ],
+  "answererLocked": [
+    "Answering player locked",
+    "作答者已锁定",
+    "作答者已鎖定"
   ],
   "answerer": [
     "Answering: {name}",
@@ -324,6 +486,11 @@ window.NeoI18n = {
     "Reveal answer",
     "显示答案",
     "顯示答案"
+  ],
+  "readyToReveal": [
+    "Everyone has chosen",
+    "全员已选好",
+    "全員已選好"
   ],
   "pickFirst": [
     "Select the answering player first.",
@@ -401,9 +568,9 @@ window.NeoI18n = {
     "跳過這道題？"
   ],
   "discardDesc": [
-    "This question can’t be chosen again this game. No points are recorded. In Take turns, the turn does not advance.",
-    "本题在本局中不能再次选择，不计分。在轮流回答模式中，也不会推进轮次。",
-    "本題在本局中不能再次選擇，不計分。在輪流回答模式中，也不會推進輪次。"
+    "Leave this question without recording a score. Use No answer when the question should count as a 0-point pass or move the turn.",
+    "离开本题且不记录分数。需要记 0 分或推进轮次时，请使用“无人作答”。",
+    "離開本題且不記錄分數。需要記 0 分或推進輪次時，請使用「無人作答」。"
   ],
   "discardEdit": [
     "Discard these changes?",
@@ -577,13 +744,13 @@ window.NeoI18n = {
   ],
   "errorText": [
     "Use text of up to 12,000 characters. Required fields cannot be blank.",
-    "请使用不超过 12,000 个字符的文本；必填字段不能为空。",
-    "請使用不超過 12,000 個字元的文字；必填欄位不能留白。"
+    "请使用不超过 12,000 个字符的文本。必填字段不能为空。",
+    "請使用不超過 12,000 個字元的文字。必填欄位不能留白。"
   ],
   "errorVersion": [
-    "Use schemaVersion 3 for current-format question packs; legacy packs can use 1 or 2.",
-    "当前格式题包的 schemaVersion 应为 3；旧格式题包可为 1 或 2。",
-    "目前格式題包的 schemaVersion 應為 3；舊格式題包可為 1 或 2。"
+    "Use schemaVersion 3 for current-format question packs. Legacy packs can use 1 or 2.",
+    "当前格式题包的 schemaVersion 应为 3。旧格式题包可为 1 或 2。",
+    "目前格式題包的 schemaVersion 應為 3。舊格式題包可為 1 或 2。"
   ],
   "errorId": [
     "Use an ID of 1–120 characters: A–Z, a–z, 0–9, dots, hyphens, or underscores.",
@@ -596,9 +763,9 @@ window.NeoI18n = {
     "locales 必須且只能包含 en、zh-Hans、zh-Hant。"
   ],
   "errorArray": [
-    "Use an array. categories needs at least one item; questions allows up to 50,000 items.",
-    "请使用数组。categories 至少需要 1 项；questions 最多允许 50,000 项。",
-    "請使用陣列。categories 至少需要 1 項；questions 最多允許 50,000 項。"
+    "Use an array. categories needs at least one item. Questions allows up to 50,000 items.",
+    "请使用数组。categories 至少需要 1 项。questions 最多允许 50,000 项。",
+    "請使用陣列。categories 至少需要 1 項。questions 最多允許 50,000 項。"
   ],
   "errorDuplicate": [
     "Use unique IDs of 1–120 characters: A–Z, a–z, 0–9, dots, hyphens, or underscores.",
@@ -711,7 +878,7 @@ window.NeoI18n = {
     "請將 formats 設為 [\"choice\"]、[\"open\"] 或 [\"choice\", \"open\"]。"
   ],
   "errorLegacyPair": [
-    "Old-format questions sharing a baseId must use the same categoryId and matching difficulty. Keep at most one choice entry and one short-answer entry; the short-answer entry must be worth 400 points more.",
+    "Old-format questions sharing a baseId must use the same categoryId and matching difficulty. Keep at most one choice entry and one short-answer entry. The short-answer entry must be worth 400 points more.",
     "旧格式题目共用 baseId 时，categoryId 和基础难度须一致。选择题与简答题各最多一条，简答题须比选择题高 400 分。",
     "舊格式題目共用 baseId 時，categoryId 和基礎難度須一致。選擇題與簡答題各最多一筆，簡答題須比選擇題高 400 分。"
   ],
@@ -816,24 +983,14 @@ window.NeoI18n = {
     "對照顯示的答案，判定口頭回答對錯，再點選「確認計分」。"
   ],
   "turnConfirmHint": [
-    "Select “Confirm scores” to update the total. To answer again, select “Undo answer”.",
-    "点击“确认计分”后更新总分。需要重新回答，可选择“撤回作答”。",
-    "點選「確認計分」後更新總分。需要重新回答，可選擇「撤回作答」。"
+    "Select “Confirm scores” to lock this result and continue. A revealed question cannot be answered again.",
+    "点击“确认计分”锁定本题结果并继续。显示答案后不能重答。",
+    "點選「確認計分」鎖定本題結果並繼續。顯示答案後不能重答。"
   ],
   "selectedAnswer": [
     "Selected: {option}",
     "已选：{option}",
     "已選：{option}"
-  ],
-  "retryAnswer": [
-    "Undo answer",
-    "撤回作答",
-    "撤回作答"
-  ],
-  "undoScore": [
-    "Undo score and retry",
-    "撤销计分并重答",
-    "撤銷計分並重答"
   ],
   "boardKeys": [
     "↑ ↓ ← → Select · Enter Open",
@@ -901,9 +1058,9 @@ window.NeoI18n = {
     "載入這份存檔？"
   ],
   "loadSaveDesc": [
-    "Loading replaces the current game, hidden-question list, interface language and other settings with those in this save. Game history is merged; for duplicate games, the imported record replaces the current one.",
-    "将用存档中的对局、隐藏记录、界面语言及其他设置替换当前内容。历史成绩会合并；同一局重复时，采用导入的记录。",
-    "將以存檔中的對局、隱藏紀錄、介面語言及其他設定取代目前內容。歷史成績會合併；同一局重複時，採用匯入的紀錄。"
+    "Loading replaces the current game, hidden-question list, interface language and other settings with those in this save. Game history is merged. For duplicate games, the imported record replaces the current one.",
+    "将用存档中的对局、隐藏记录、界面语言及其他设置替换当前内容。历史成绩会合并。同一局重复时，采用导入的记录。",
+    "將以存檔中的對局、隱藏紀錄、介面語言及其他設定取代目前內容。歷史成績會合併。同一局重複時，採用匯入的紀錄。"
   ],
   "searchTotal": [
     "Questions: {n}",
@@ -921,19 +1078,29 @@ window.NeoI18n = {
     "道題"
   ],
   "roundStepHint": [
-    "In steps of 12 · current maximum: {max}",
-    "每次增减 12 题 · 当前上限 {max} 题",
-    "每次增減 12 題 · 目前上限 {max} 題"
+    "In steps of {step} · current maximum: {max}",
+    "每次增减 {step} 题 · 当前上限 {max} 题",
+    "每次增減 {step} 題 · 目前上限 {max} 題"
+  ],
+  "roundStepHintTurns": [
+    "One full round at a time ({step} questions) · current maximum: {max}",
+    "每次增减一整轮（{step} 题）· 当前人数下上限 {max} 题",
+    "每次增減一整輪（{step} 題）· 目前人數下上限 {max} 題"
+  ],
+  "roundPerPlayer": [
+    "{n} each",
+    "每人 {n} 题",
+    "每人 {n} 題"
   ],
   "roundLess": [
-    "12 fewer questions",
-    "减少 12 道题",
-    "減少 12 道題"
+    "{n} fewer questions",
+    "减少 {n} 道题",
+    "減少 {n} 道題"
   ],
   "roundMore": [
-    "12 more questions",
-    "增加 12 道题",
-    "增加 12 道題"
+    "{n} more questions",
+    "增加 {n} 道题",
+    "增加 {n} 道題"
   ],
   "needTwelve": [
     "You need at least 12 available questions to start. Restore hidden questions or choose another question pack.",
@@ -1136,7 +1303,7 @@ window.NeoI18n = {
     "缺少題包「{packId}」。請先匯入建立此存檔時使用的同一份題包，再重試。"
   ],
   "savePackVersionMismatch": [
-    "Question pack “{packId}” has a different version. This save needs {expectedVersion}; {installedVersion} is installed. Import the exact pack used for this save, then try again.",
+    "Question pack “{packId}” has a different version. This save needs {expectedVersion}. {installedVersion} is installed. Import the exact pack used for this save, then try again.",
     "题包“{packId}”的版本不符。存档需要 {expectedVersion}，当前安装的是 {installedVersion}。请导入创建此存档时使用的同一份题包，再重试。",
     "題包「{packId}」的版本不符。存檔需要 {expectedVersion}，目前安裝的是 {installedVersion}。請匯入建立此存檔時使用的同一份題包，再重試。"
   ],
@@ -1241,9 +1408,9 @@ window.NeoI18n = {
     "acceptedAnswers 必須是字串陣列。"
   ],
   "errorOpenPoints": [
-    "For schemaVersion 3, openPoints must equal difficulty × 200; schemaVersion 2 cannot include openPoints.",
-    "schemaVersion 3 的 openPoints 必须等于 difficulty × 200；schemaVersion 2 不可包含 openPoints。",
-    "schemaVersion 3 的 openPoints 必須等於 difficulty × 200；schemaVersion 2 不可包含 openPoints。"
+    "For schemaVersion 3, openPoints must equal difficulty × 200. SchemaVersion 2 cannot include openPoints.",
+    "schemaVersion 3 的 openPoints 必须等于 difficulty × 200。schemaVersion 2 不可包含 openPoints。",
+    "schemaVersion 3 的 openPoints 必須等於 difficulty × 200。schemaVersion 2 不可包含 openPoints。"
   ],
   "about": [
     "About",

@@ -259,8 +259,20 @@
         ui.status(status, status !== 'connected');
       },
       onError(code) {
-        if (['ROOM_EXPIRED', 'ROOM_NOT_FOUND', 'REMOVED_FROM_ROOM'].includes(code))
+        if (
+          [
+            'ROOM_EXPIRED',
+            'ROOM_NOT_FOUND',
+            'REMOVED_FROM_ROOM',
+            'ROOM_VERSION_UNSUPPORTED'
+          ].includes(code)
+        ) {
           setSession(null);
+          if (state?.phase !== 'finished') {
+            state = null;
+            ui.setState(null);
+          }
+        }
         showError({ code });
       }
     });
@@ -273,9 +285,13 @@
     else if (session) setSession({ ...session, resumeOnLoad: false });
     ui?.status('idle');
   }
-  async function send(type, payload = {}) {
+  async function send(type, payload = {}, expected) {
     if (!connection) throw Object.assign(new Error('DISCONNECTED'), { code: 'DISCONNECTED' });
-    return connection.send(type, payload, state?.current?.id, state?.selectionId);
+    if (expected?.roomId && expected.roomId !== state?.id)
+      throw Object.assign(new Error('staleRoom'), { code: 'staleRoom' });
+    return connection.send(type, payload,
+      expected && Object.hasOwn(expected, 'roundId') ? expected.roundId : state?.current?.id,
+      expected && Object.hasOwn(expected, 'selectionId') ? expected.selectionId : state?.selectionId);
   }
   async function adminCreate(draft) {
     const body = {
@@ -526,6 +542,7 @@
     ensureCatalog,
     getSession: () => session,
     getState: () => state,
+    download,
     openOffline: async () => {
       if (!root.QuizAdmin && !(await requestUnlock())) return;
       root.NeoAudio.configure({ sfx: false, music: false });
@@ -558,7 +575,7 @@
     },
     getAdminCreateView: (args) => root.QuizAdmin?.createView({ ...args, categories }) || '',
     getAdminHostControls: (args) => root.QuizAdmin?.hostControls(args) || '',
-    handleAdminAction: (action, element) => root.QuizAdmin?.handleAction(action, element, app),
+    handleAdminAction: (action, element, expected) => root.QuizAdmin?.handleAction(action, element, app, expected),
     adminCreate,
     saveOnlineHistory,
     exportResults,

@@ -679,9 +679,44 @@ html[data-input='keyboard'] .qp-tile.qp-key-selected {
   background: var(--pink);
 }
 .qp-correct-chart {
+  min-width: 0;
   display: grid;
   gap: 12px;
   margin-top: 20px;
+}
+
+.qp-score-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  margin-top: 16px;
+}
+.qp-answer-text:empty {
+  display: none;
+}
+.qp-participation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+  gap: 16px;
+}
+.qp-participation {
+  padding: 16px;
+  border: 2px solid #000;
+  min-width: 0;
+}
+.qp-participation dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+.qp-participation dt {
+  font-size: 14px;
+}
+.qp-participation dd {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
 }
 .qp-correct-row {
   display: grid;

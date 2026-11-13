@@ -1,6 +1,14 @@
 (function (root) {
   'use strict';
   const apiBase = () => String(root.QuizConfig?.apiBase || '').replace(/\/$/, '');
+  const permanentErrors = new Set([
+    'ROOM_EXPIRED',
+    'ROOM_NOT_FOUND',
+    'UNAUTHORIZED',
+    'REMOVED_FROM_ROOM',
+    'ROOM_VERSION_UNSUPPORTED',
+    'CLIENT_UPDATE_REQUIRED'
+  ]);
   async function api(path, options = {}) {
     const controller = new AbortController(),
       timer = setTimeout(() => controller.abort(), 15000);
@@ -167,6 +175,11 @@
             return;
           }
           if (message.type === 'snapshot') {
+            if (message.state?.protocol !== 2) {
+              stop('CLIENT_UPDATE_REQUIRED');
+              onStatus('CLIENT_UPDATE_REQUIRED');
+              return;
+            }
             if (Array.isArray(message.state.history)) history = message.state.history;
             else if (!message.historyUnchanged) return;
             onState({ ...message.state, history });
@@ -188,11 +201,7 @@
               pending.delete(message.id);
               item.reject(Object.assign(new Error(message.code), { code: message.code }));
             } else onError(message.code);
-            if (
-              ['ROOM_EXPIRED', 'ROOM_NOT_FOUND', 'UNAUTHORIZED', 'REMOVED_FROM_ROOM'].includes(
-                message.code
-              )
-            ) {
+            if (permanentErrors.has(message.code)) {
               stop(message.code);
               onStatus(message.code);
             }
@@ -211,7 +220,7 @@
         next.onerror = () => {};
       } catch (e) {
         if (run !== generation || stopped) return;
-        if ([401, 404, 410].includes(e.status)) {
+        if ([401, 404, 410].includes(e.status) || permanentErrors.has(e.code)) {
           stop(e.code);
           onStatus(e.code);
           onError(e.code);
@@ -242,7 +251,7 @@
             Object.assign(new Error('WAIT_FOR_SERVER'), { code: 'WAIT_FOR_SERVER' })
           );
         const command = {
-          protocol: 1,
+          protocol: 2,
           id: crypto.randomUUID(),
           type,
           payload,

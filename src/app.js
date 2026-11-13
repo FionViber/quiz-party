@@ -43,7 +43,7 @@
     prefs: {sfx: saved.prefs?.sfx !== false, music: saved.prefs?.music === true, reduced: saved.prefs?.reduced === true},
     activePack: packs.some(p => p.id === saved.activePack) ? saved.activePack : packs[0]?.id,
     hidden: saved.hidden && typeof saved.hidden === 'object' && !Array.isArray(saved.hidden) ? saved.hidden : (saved.deleted && typeof saved.deleted === 'object' && !Array.isArray(saved.deleted) ? saved.deleted : {}),
-    game: null, view: 'home', boardPage: 0, libraryScroll: 0, setup: {mode: C.MODES.includes(saved.setup?.mode)?saved.setup.mode:'together', count: Number.isInteger(saved.setup?.count)&&saved.setup.count>=2&&saved.setup.count<=8?saved.setup.count:4, names: Array.from({length:8},(_,i)=>Names.normalize(saved.setup?.names?.[i]||'')), tagFilter:saved.setup?.tagFilter, questionCount: Number.isInteger(saved.setup?.questionCount)&&saved.setup.questionCount>=12&&saved.setup.questionCount%12===0?saved.setup.questionCount:24},
+    game: null, view: 'home', boardPage: 0, libraryScroll: 0, setup: {mode: C.MODES.includes(saved.setup?.mode)?saved.setup.mode:'together', count: Number.isInteger(saved.setup?.count)&&saved.setup.count>=2&&saved.setup.count<=8?saved.setup.count:4, names: Array.from({length:8},(_,i)=>Names.normalize(saved.setup?.names?.[i]||'')), tagFilter:saved.setup?.tagFilter, questionCount: Number.isInteger(saved.setup?.questionCount)&&saved.setup.questionCount>=1&&saved.setup.questionCount<=96?saved.setup.questionCount:24},
     library: {filter:'active', query:'', from:'home', scope:'all'}, modal: null, flowPages: {}
   };
   state.boardCursor = null;
@@ -66,7 +66,6 @@
       const portable = Archive.exportSave({...state, game});
       state.game = Archive.inspectSave(portable, [game.pack], C).game;
       state.game.pack=game.pack;
-      if (state.game.current && Object.hasOwn(state.hidden,C.key(game.pack.id,game.current.qid))) state.game.current = null;
     }
   } catch (_) { restoreFailed=true; }
   const $ = s => document.querySelector(s);
@@ -106,7 +105,6 @@
   }
   function applyHidden(hidden){
     state.hidden=hidden;
-    if(state.game?.current&&isHidden(state.game.pack.id,state.game.current.qid))state.game.current=null;
     render();persist();
   }
   function flushHidden(){if(!busy()&&pendingHidden){const hidden=pendingHidden;pendingHidden=null;applyHidden(hidden);}}
@@ -147,7 +145,7 @@
 
   function reconcileView(){
     const g=state.game;
-    if(state.view==='question'&&(!currentQ()||isHidden(g.pack.id,g.current.qid))){if(g)g.current=null;state.view=g?'board':'home';}
+    if(state.view==='question'&&!currentQ()){if(g)g.current=null;state.view=g?'board':'home';}
     if(state.view==='board'){
       if(!g)state.view='home';
       else if(g.current)state.view='question';
@@ -276,36 +274,46 @@
     const pack=getPack();state.setup.tagFilter={packId:pack.id,selectedIds:Categories.normalizeSelection(pack,ids)};
     setupPlanCache=null;state.setup.questionCount=normalizeRoundChoice(pack);
   }
-  function maxRoundQuestions(pack=getPack()) {
-    return Math.floor(setupQuestions(pack).length/12)*12;
+  function roundConfig(pack=getPack(),mode=state.setup.mode,players=state.setup.count) {
+    const step=mode==='turns'?Math.max(2,players):12, eligible=setupQuestions(pack);
+    const min=mode==='turns'?Math.max(step,Math.ceil(8/Math.max(1,players))*players):12;
+    const choiceCount=eligible.reduce((n,q)=>n+(C.forms(q).includes('choice')?1:0),0);
+    const openCount=eligible.reduce((n,q)=>n+(C.forms(q).includes('open')?1:0),0);
+    let max=Math.floor(Math.min(eligible.length,96)/step)*step;
+    const feasible=n=>Math.max(Math.ceil(5*n/8),n-openCount)<=Math.min(Math.floor(6*n/8),choiceCount);
+    while(max>=min&&!feasible(max))max-=step;
+    return {step,min,max};
+  }
+  function maxRoundQuestions(pack=getPack(),mode=state.setup.mode,players=state.setup.count) {
+    return roundConfig(pack,mode,players).max;
   }
   function normalizeRoundChoice(pack=getPack(),n=state.setup.questionCount) {
-    const max=maxRoundQuestions(pack);
-    if(max<12)return 0;
-    return Math.max(12,Math.min(max,Math.floor((Number(n)||24)/12)*12));
+    const cfg=roundConfig(pack),max=cfg.max;
+    if(max<cfg.min)return 0;
+    return Math.max(cfg.min,Math.min(max,Math.floor((Number(n)||24)/cfg.step)*cfg.step));
   }
   function roundPlan(pack,count) {
     const allowed=new Set(setupQuestions(pack).map(q=>q.id));
     const excluded=pack.questions.filter(q=>!allowed.has(q.id)).map(q=>q.id), key=excluded.join('|');
-    if(!setupPlanCache||setupPlanCache.pack!==pack||setupPlanCache.count!==count||setupPlanCache.key!==key) {
-      setupPlanCache={pack,count,key,plan:C.planBoard(pack,excluded,count)};
+    if(!setupPlanCache||setupPlanCache.pack!==pack||setupPlanCache.count!==count||setupPlanCache.key!==key||setupPlanCache.mode!==state.setup.mode) {
+      setupPlanCache={pack,count,key,mode:state.setup.mode,plan:C.planBoard(pack,excluded,count,Math.random,state.setup.mode==='turns'?{flexibleCount:true}:undefined)};
     }
     return setupPlanCache.plan;
   }
   function balancePreview(plan,count) {
     const content=plan.feasible?
       `<div class="balance-levels">${plan.counts.map((n,i)=>`<div class="balance-level" data-level="${i+1}" data-count="${n}"><small>${e(t(i<4?'tileChoice':'tileOpen'))}</small><strong>${tierPoints(getPack(),i+1)}</strong><span>× ${n}</span></div>`).join('')}</div><p>${e(t('balanceRatio',{percent:Math.round(plan.choiceCount/count*1000)/10}))}</p>`:
-      `<p class="balance-warning" role="status">${e(t(!selectedCategories().length?'noCategories':count<12?'needTwelve':'balanceUnavailable'))}</p>`;
+      `<p class="balance-warning" role="status">${e(t(!selectedCategories().length?'noCategories':'balanceUnavailable'))}</p>`;
     return `<section class="setup-balance" aria-label="${e(t('balanceTitle'))}"><h2>${e(t('balanceTitle'))}</h2>${content}</section>`;
   }
   function setupView() {
     const s=state.setup;
-    const maxRounds=maxRoundQuestions(), step=normalizeRoundChoice(getPack(),s.questionCount);
+    const cfg=roundConfig(getPack(),s.mode,s.count), maxRounds=cfg.max, step=normalizeRoundChoice(getPack(),s.questionCount);
     const plan=roundPlan(getPack(),step);
     return `<div class="back-line">${B('home',t('back'),'small','','back')}</div><section class="setup-layout"><div class="setup-left"><div class="kicker">${e(t('setupKicker'))}</div><h1 class="display">${e(t('setupTitle'))}</h1><p>${e(t('setupSub'))}</p><div class="rule-ticket"><strong>${e(t(s.mode))}</strong><p>${e(t('rules'+({together:'Together',buzz:'Buzz',turns:'Turns'}[s.mode])))}</p></div>${balancePreview(plan,step)}</div>
       <div class="panel setup-panel"><div class="field-label">${e(t('playerCount'))}</div><div class="count-switch" aria-label="${e(t('playerCount'))}">${[2,3,4,5,6,7,8].map(n=>`<button data-action="count" data-count="${n}" data-key-preferred="Digit${n}" aria-pressed="${s.count===n}">${n}</button>`).join('')}</div>
-      <div class="round-picker"><div class="round-picker-heading"><span class="field-label">${e(t('roundQuestionCount'))}</span><span class="round-picker-help">${e(t('roundStepHint',{max:maxRounds}))}</span></div>
-      <div class="round-stepper" aria-label="${e(t('roundQuestionCount'))}"><button type="button" data-action="question-count" data-delta="-12" data-key-preferred="Minus" ${step<=12?'disabled':''} aria-label="${e(t('roundLess'))}">−12</button><output>${step||'—'} <small>${e(t('roundQuestionUnit'))}</small></output><button type="button" data-action="question-count" data-delta="12" data-key-preferred="Equal" ${step>=maxRounds?'disabled':''} aria-label="${e(t('roundMore'))}">+12</button></div></div>
+      <div class="round-picker"><div class="round-picker-heading"><span class="field-label">${e(t('roundQuestionCount'))}</span><span class="round-picker-help">${e(t(s.mode==='turns'?'roundStepHintTurns':'roundStepHint',{step:cfg.step,max:maxRounds}))}${s.mode==='turns'?` · ${e(t('roundPerPlayer',{n:Math.floor(step/s.count)}))}`:''}</span></div>
+      <div class="round-stepper" aria-label="${e(t('roundQuestionCount'))}"><button type="button" data-action="question-count" data-delta="-${cfg.step}" data-key-preferred="Minus" ${step<=cfg.min?'disabled':''} aria-label="${e(t('roundLess',{n:cfg.step}))}">−${cfg.step}</button><output>${step||'—'} <small>${e(t('roundQuestionUnit'))}</small></output><button type="button" data-action="question-count" data-delta="${cfg.step}" data-key-preferred="Equal" ${step>=maxRounds?'disabled':''} aria-label="${e(t('roundMore',{n:cfg.step}))}">+${cfg.step}</button></div></div>
       <div class="names-heading"><span class="field-label">${e(t('names'))}</span><span id="name-limit" class="hint">${e(t('nameLimit'))}</span></div><div class="name-grid">${Array.from({length:s.count},(_,i)=>`<label class="name-field"><span aria-hidden="true">${i+1}</span><input data-name="${i}" autocomplete="off" aria-describedby="name-limit" value="${e(s.names[i])}" aria-label="${e(t('player',{n:i+1}))}" placeholder="${e(t('player',{n:i+1}))}"></label>`).join('')}</div>
       <div class="setup-pack-row"><span class="field-label">${e(t('pack'))}</span>${packPickerButton('setup')}</div>
       <div class="setup-filter-row"><span class="field-label">${e(t('categoryFilter'))}</span>${B('categories',t('selectedCategories',{n:selectedCategories().length,total:Categories.listGroups(getPack()).length}),'small','aria-haspopup="dialog"','settings')}</div>
@@ -335,8 +343,9 @@
       return `<button type="button" class="board-question-tile ${used?'taken':''}" data-action="pick" data-qid="${e(b.qid)}" data-level="${b.level}" data-points="${points}" data-type="${variant.type}" data-number="${b.number}" ${used?'disabled':''} aria-label="${e(t('questionNumber',{n:b.number})+' · '+t('selectQ',{p:points})+' · '+t(variant.type)+' · '+t(participationKey(g.mode,variant))+' · '+label)}"><span class="board-tile-row"><strong>${points} <small>${e(t('points'))}</small></strong>${questionBadges(variant,g.mode,true)}</span><span class="board-tile-tag" title="${e(label)}">${e(label)}</span><span class="board-tile-meta"><span class="board-tile-number">#${String(b.number).padStart(2,'0')}</span>${used?`<span class="board-tile-chosen">${e(t('pickedQuestion'))}</span>`:''}</span></button>`;
     }).join('');
     const pager=pages>1?`<nav class="board-pagination" aria-label="${e(t('boardTitle'))}">${B('board-prev',t('prev'),'small',state.boardPage===0?'disabled':'','back')}<span class="board-page-count" aria-live="polite">${state.boardPage+1} / ${pages}</span>${B('board-next',t('nextPage'),'small',state.boardPage===pages-1?'disabled':'','arrow')}</nav>`:'';
+    const pickerIndex=activeHistory(g).length%g.players.length;
     return `<div class="page-top"><div><h1>${e(t('boardTitle'))}</h1></div><div class="row"><span class="tag yellow">${e(t(g.mode))}</span>${B('finish',t('finish'),'small','','flag')}</div></div>${scoresStrip()}
-      <div class="board-toolbar"><div class="row"><span class="tag black">${e(g.mode==='turns'?t('nextTurn',{name:g.players[C.currentPlayer(g)]}):t(g.mode))}</span></div><span class="kicker">${state.lang==='en'?'100 / 200 / 300 / 400':'100、200、300、400'} ${e(t('points'))} · ${e(t('tileChoice'))} / ${(g.pack.schemaVersion===3?[200,400,600,800]:[500,600,700,800]).join(state.lang==='en'?' / ':'、')} ${e(t('points'))} · ${e(t('tileOpen'))}</span></div>
+      <div class="board-toolbar"><div class="row"><span class="tag black">${e(t('questionPicker',{name:g.players[g.mode==='turns'?C.currentPlayer(g):pickerIndex]}))}</span></div><span class="kicker">${state.lang==='en'?'100 / 200 / 300 / 400':'100、200、300、400'} ${e(t('points'))} · ${e(t('tileChoice'))} / ${(g.pack.schemaVersion===3?[200,400,600,800]:[500,600,700,800]).join(state.lang==='en'?' / ':'、')} ${e(t('points'))} · ${e(t('tileOpen'))}</span></div>
       <section class="board-fixed-grid" role="group" aria-label="${e(t('boardTitle'))}">${cards||`<div class="board-empty">${e(t('noMatches'))}</div>`}</section>
       <div class="board-footer"><span>${e(packTitle(g.pack))}</span>${pager||`<span class="board-keyboard-help">${e(t(state.boardCursor?'boardKeys':'boardKeysEmpty'))}</span>`}<span>${e(t('roundProgress',{n:activeHistory(g).length,total:g.questionTarget||g.board.length}))}</span></div>`;
   }
@@ -456,28 +465,32 @@
     return `<div class="question-tools">${googleLink(q,true)}${B('hide',t('remove'),'small',attrs+' data-key-preferred="Digit8"','eye')}</div>`;
   }
 
+  function canEditJudgment(g,q,cur) {
+    return !!q&&!cur.pass&&(q.type==='open'||C.isCollective(g.mode,q)||(g.rulesVersion<5&&g.mode==='buzz'));
+  }
   function questionView() {
     const g=state.game,q=currentQ(),cur=g?.current;
     // A V2 save can be paused before choosing a spoken-answer contestant.
     // Keep recorded answerers, but assign an unanswered turn to the current player.
     if(g.mode==='turns'&&cur.answerer===null)cur.answerer=C.currentPlayer(g);
-    const race=C.isRace(g.mode,q),all=C.isCollective(g.mode,q),reveal=cur.phase!=='answer';
-    const selectable=cur.phase==='answer'&&!all&&Number.isInteger(cur.answerer);
-    const category=g.pack.categories.find(c=>c.id===q.categoryId);
-    const instruction=all?t('collectiveHint'):(race&&q.type==='choice' ?
+    const race=C.isRace(g.mode,q),lockingRace=race&&g.rulesVersion>=5,all=C.isCollective(g.mode,q),reveal=cur.phase!=='answer';
+    const selectable=cur.phase==='answer'&&!all&&Number.isInteger(cur.answerer)&&(!lockingRace||cur.answererLocked===true);
+    const buzzOrder=Array.from({length:g.players.length},(_,i)=>(i+activeHistory(g).length)%g.players.length);
+    const instruction=lockingRace&&!cur.answererLocked?(cur.answerer===null?t('chooseBuzzerFirst'):t('confirmBuzzerHint',{name:g.players[cur.answerer]})):all?t(cur.collectiveReady?'collectiveReadyHint':'collectiveHint'):(race&&q.type==='choice' ?
       (cur.answerer===null?t('raceChoiceFirst'):cur.selected?t('raceChoiceReady',{n:g.players[cur.answerer],option:String.fromCharCode(65+q.options.indexOf(cur.selected))}):t('raceChoiceNext',{n:g.players[cur.answerer]})):
       race&&q.type==='open'?(cur.answerer===null?t('raceOpenFirst'):t('raceOpenReady',{n:g.players[cur.answerer]})):
       q.type==='open'?t('turnOpenReady',{n:g.players[cur.answerer]}):
       (cur.selected?t('turnChoiceReady',{option:String.fromCharCode(65+q.options.indexOf(cur.selected))}):t('turnChoiceNext')));
-    return `<div class="question-top"><div class="row">${B('question-back',t('back'),'small','','back')}<span class="tag question-type-marker" data-question-type="${q.type}">${e(t(g.mode))}</span></div>${tools(q,g.pack.id)}</div>
+    return `<div class="question-top"><div class="row">${B('question-back',t('back'),'small','','back')}<span class="tag question-type-marker" data-question-type="${q.type}">${e(t(g.mode))}${g.rulesVersion<5?' · '+e(t('legacyRound')):''}</span></div>${reveal?tools(q,g.pack.id):''}</div>
       ${scoresStrip()}<div style="--prompt-height:${q.type==='choice'&&q.options.length>4?228:280}px" class="question-content ${reveal?'revealed':'answering'} ${q.type==='open'?'is-open':''} ${race?'is-race':''}">
       <section class="question-panel" data-question-type="${q.type}"><div class="question-band"><div class="row"><strong>${e(questionTag(g.pack.questions.find(x=>x.id===q.id),g.pack))}</strong>${questionBadges(q,g.mode)}</div><span class="question-value">${q.points}<small>${e(t('points'))}</small></span></div>${triplePrompt(q)}</section>
       ${!reveal?`<div class="question-instruction">${icon(race?'bolt':all?'users':'card')}<span>${e(instruction)}</span>${!all&&!race?`<strong>${e(t('answerer',{name:g.players[cur.answerer]}))}</strong>`:''}</div>`:''}
-      ${!reveal&&race?`<section class="answerer-panel"><strong>${e(t('whoBuzzed'))}</strong><div class="answerer-buttons">${g.players.map((n,i)=>B('answerer',n,'small',`data-player="${i}" data-key-preferred="${'Key'+'ASDFGHJK'[i]}" aria-pressed="${cur.answerer===i}"`)).join('')}</div></section>`:''}
+      ${!reveal&&race?`<section class="answerer-panel"><strong>${e(t(lockingRace&&cur.answererLocked?'answererLocked':'whoBuzzed'))}</strong><div class="answerer-buttons">${buzzOrder.map(i=>B('answerer',g.players[i],'small',`data-player="${i}" data-key-preferred="${'Key'+'ASDFGHJK'[i]}" aria-pressed="${cur.answerer===i}" ${lockingRace&&cur.answererLocked?'disabled':''}`)).join('')}${lockingRace&&Number.isInteger(cur.answerer)&&!cur.answererLocked?B('lock-answerer',t('lockAnswerer'),'small','','check'):''}</div></section>`:''}
+      ${!reveal&&cur.phase==='answer'?B('pass',t(g.rulesVersion<5?'legacySkip':g.mode==='turns'?'passTurns':all?'passCollective':Number.isInteger(cur.answerer)&&cur.answererLocked?'abandonAnswer':'passRace',{h:C.wrongCost(g.mode,q,g.rulesVersion)}),'small','','cross'):''}
       ${!reveal?optionsView(q,cur,selectable,false):''}
       ${reveal?tripleAnswer(q):''}
       ${cur.phase==='judge'?judgmentView(q,cur):''}${cur.phase==='scored'?scoredView(q,cur):''}</div>
-      <div class="question-bottom"><span class="hint">${e(t(C.wrongCost(g.mode,q,g.rulesVersion)>0?'racePenalty':'noPenalty',{p:q.points,h:C.wrongCost(g.mode,q,g.rulesVersion)}))}</span><div class="row">${reveal&&q.type==='choice'?B('inspect',t('viewOptions'),'small',`data-qid="${e(q.id)}" data-pack="${e(g.pack.id)}"`,'card'):''}${g.mode==='turns'&&cur.phase==='judge'?B('retry-answer',t('retryAnswer'),'small','data-key-preferred="KeyZ"','refresh'):''}${cur.phase==='answer'?B('reveal',t(all?'cardsReady':'reveal'),'primary',(!all&&(cur.answerer===null||(q.type==='choice'&&!cur.selected)))?'disabled':'','eye'):cur.phase==='judge'?B('commit',t('commit'),'primary',canCommit()?'':'disabled','check'):`${g.mode==='turns'?B('undo-score',t('undoScore'),'small','data-key-preferred="KeyZ"','refresh'):B('edit',t('editJudgment'),'small','','refresh')}${B('next',t('next'),'primary','','arrow')}`}</div></div>`;
+      <div class="question-bottom"><span class="hint">${e(t(C.wrongCost(g.mode,q,g.rulesVersion)>0?'racePenalty':'noPenalty',{p:q.points,h:C.wrongCost(g.mode,q,g.rulesVersion)}))}</span><div class="row">${reveal&&q.type==='choice'?B('inspect',t('viewOptions'),'small',`data-qid="${e(q.id)}" data-pack="${e(g.pack.id)}"`,'card'):''}${(cur.phase==='answer'||cur.phase==='judge'||cur.phase==='scored')?B('void-question',t('voidQuestion'),'small','','cross'):''}${cur.phase==='answer'?B('reveal',t(g.rulesVersion>=5&&all?(cur.collectiveReady?'reveal':'readyToReveal'):'reveal'),'primary',(!all&&(cur.answerer===null||(q.type==='choice'&&!cur.selected)))?'disabled':'','eye'):cur.phase==='judge'?B('commit',t('commit'),'primary',canCommit()?'':'disabled','check'):`${canEditJudgment(g,q,cur)?B('edit',t('editJudgment'),'small','','refresh'):''}${B('next',t('next'),'primary','','arrow')}`}</div></div>`;
   }
 
   function targets() {
@@ -487,14 +500,14 @@
   function canCommit() { return targets().every(i=>Number.isInteger(i)&&typeof state.game.current.judgments[i]==='boolean'); }
   function judgmentView(q,cur) {
     const g=state.game, ids=targets(), n=ids.filter(i=>typeof cur.judgments[i]==='boolean').length;
-    if(g.mode==='turns')return turnReview(q,cur);
+    if(g.mode==='turns'||(q.type==='choice'&&!C.isCollective(g.mode,q)&&g.rulesVersion>=5))return turnReview(q,cur);
     return `<section class="judging-section"><div class="judge-heading"><div><h2>${e(t(ids.length===1?'judgingSingle':'judging'))}</h2><p>${e(t(ids.length===1?'judgeSingleSub':'judgeSub'))}</p></div><div class="row judge-bulk">${ids.length>1?B('judge-all',t('allCorrect'),'small','data-result="true" data-key-preferred="KeyC"','check')+B('judge-all',t('allWrong'),'small','data-result="false" data-key-preferred="KeyV"','cross'):''}<span class="tag yellow">${e(t('judgedCount',{n,total:ids.length}))}</span></div></div><div class="judge-grid ${ids.length===1?'single':''}">${ids.map(i=>{
       const v=cur.judgments[i];return `<div class="judge-card" data-result="${v===true?'correct':v===false?'wrong':'pending'}"><div class="judge-name"><strong>${e(g.players[i])}</strong><span>${e(t(typeof v==='boolean'?(v?'correct':'wrong'):'pending'))}</span></div><div class="judge-actions"><button data-action="judge" data-player="${i}" data-result="true" data-key-preferred="${ids.length===1?'KeyC':'Digit'+[1,2,3,4,5,6,9,0][i]}" aria-pressed="${v===true}" aria-label="${e(g.players[i]+' '+t('correct'))}">${icon('check')}${e(t('correct'))}</button><button data-action="judge" data-player="${i}" data-result="false" data-key-preferred="${ids.length===1?'KeyV':'Key'+'ASDFGHJK'[i]}" aria-pressed="${v===false}" aria-label="${e(g.players[i]+' '+t('wrong'))}">${icon('cross')}${e(t('wrong'))}</button></div></div>`;
     }).join('')}</div></section>`;
   }
   function turnReview(q,cur) {
     const name=state.game.players[cur.answerer], judgment=cur.judgments[cur.answerer], ready=typeof judgment==='boolean';
-    const delta=ready?(judgment?q.points:-C.wrongCost('turns',q,state.game.rulesVersion)):null;
+    const delta=ready?(judgment?q.points:-C.wrongCost(state.game.mode,q,state.game.rulesVersion)):null;
     const outcome=ready?t(judgment?'turnCorrect':'turnWrong'):t('turnJudge');
     const controls=q.type==='open'?`<div class="turn-judge-actions">${B('judge',t('correct'),'small',`data-player="${cur.answerer}" data-result="true" data-key-preferred="KeyC" aria-pressed="${judgment===true}"`,'check')}${B('judge',t('wrong'),'small',`data-player="${cur.answerer}" data-result="false" data-key-preferred="KeyV" aria-pressed="${judgment===false}"`,'cross')}</div>`:'';
     return `<section class="turn-review" data-result="${ready?(judgment?'correct':'wrong'):'pending'}" aria-live="polite"><div><p class="turn-review-player">${e(t('answerer',{name}))}${q.type==='choice'?` · ${e(t('selectedAnswer',{option:String.fromCharCode(65+q.options.indexOf(cur.selected))}))}`:''}</p><h2>${e(outcome)}</h2><p>${e(t(ready?'turnConfirmHint':'turnJudgeHint'))}</p>${controls}</div><strong class="turn-review-delta">${delta===null?'—':delta>0?'+'+delta:delta}</strong></section>`;
@@ -577,7 +590,7 @@
     return Motion.play(dialog,[{transform:'translateY(0)'},{transform:'translateY(16px)'}],{duration:110,reduced:reduced()}).finally(finish);
   }
 
-  function confirmModal(title,desc,callback,danger=false,confirmLabel='confirm') { openModal({type:'confirm',title,desc,callback,danger,confirmLabel}); }
+  function confirmModal(title,desc,callback,danger=false,confirmLabel='confirm',params={}) { openModal({type:'confirm',title,desc,callback,danger,confirmLabel,params}); }
   function renderDialog() {
     const m=state.modal;if(!m)return;
     let title='',body='',actions='',wide=false;
@@ -611,7 +624,7 @@
       actions=googleLink(q)+(isHidden(m.packId,m.qid)?B('restore',t('restore'),'primary small',`data-pack="${e(m.packId)}" data-qid="${e(m.qid)}"`,'refresh'):B('hide',t('remove'),'small',`data-pack="${e(m.packId)}" data-qid="${e(m.qid)}"`,'eye'));
     }
     if(m.type==='confirm') {
-      title=t(m.title);body=`<p>${e(t(m.desc))}</p>`;actions=B('close-modal',t('cancel'))+B('modal-confirm',t(m.confirmLabel||'confirm'),m.danger?'danger':'primary');
+      title=t(m.title,m.params||{});body=`<p>${e(t(m.desc,m.params||{}))}</p>`;actions=B('close-modal',t('cancel'))+B('modal-confirm',t(m.confirmLabel||'confirm',m.params||{}),m.danger?'danger':'primary');
     }
     if(m.type==='error') {
       title=t('importFail');body=`<p>${e(t('importFailDesc'))}</p><div class="error-list">${m.errors.slice((m.page||0)*5,(m.page||0)*5+5).map(error=>`<p><code>${e(error.path)}</code><br>${e(error.key?t(error.key,error.params||{}):(error.message||t('error'+error.code.charAt(0).toUpperCase()+error.code.slice(1))))}</p>`).join('')}</div>`;
@@ -648,26 +661,31 @@
   }
   function startGame() {return tasks.run(async()=>{
     const pack=getPack(),count=normalizeRoundChoice(pack,state.setup.questionCount);
-    if(count<12){toast(t('needTwelve'));return;}
+    if(count<1||(state.setup.mode!=='turns'&&count<12)){toast(t('needTwelve'));return;}
     const plan=roundPlan(pack,count);
     if(!plan.feasible){toast(t('balanceUnavailable'),7000);return;}
     const players=state.setup.names.slice(0,state.setup.count).map((n,i)=>Names.normalize(n,true)||t('player',{n:i+1}));
+    const nameKeys=new Set(),duplicate=players.find(name=>{const key=Names.normalize(name,true).normalize('NFC').toLocaleLowerCase();if(nameKeys.has(key))return true;nameKeys.add(key);return false;});
+    if(duplicate){toast(t('duplicateNames'),6000);return;}
     const board=plan.board.map(slot=>({...slot}));
     if(!await retainGamePack(pack))return;
-    return go('board',()=>{state.game={rulesVersion:4,id:'game-'+Date.now(),startedAt:new Date().toISOString(),mode:state.setup.mode,players,pack,questionTarget:count,board,seen:[],history:[],current:null,finished:false};setupPlanCache=null;state.resultHistoryId=null;state.boardPage=0;state.boardCursor=null;});
+    return go('board',()=>{state.game={rulesVersion:5,id:'game-'+Date.now(),startedAt:new Date().toISOString(),mode:state.setup.mode,players,pack,questionTarget:count,board,seen:[],history:[],retired:[],selectedCategoryIds:selectedCategories(pack),current:null,finished:false};setupPlanCache=null;state.resultHistoryId=null;state.boardPage=0;state.boardCursor=null;});
   });}
   function pick(qid,level) {
     const g=state.game;
     const tile=g.board.find(x=>x.qid===qid&&x.level===level);
     if(!tile||g.seen.includes(qid)||isHidden(g.pack.id,qid))return;
     const q=C.variant(g.pack.questions.find(x=>x.id===qid),level);
-    return go('question',()=>{state.boardCursor=qid;state.flowPages={};g.seen.push(q.id);g.current={qid:q.id,level:q.level,phase:'answer',selected:null,answerer:g.mode==='turns'?C.currentPlayer(g):null,judgments:Array(g.players.length).fill(null)};});
+    return go('question',()=>{state.boardCursor=qid;state.flowPages={};g.seen.push(q.id);g.current={qid:q.id,level:q.level,phase:'answer',selected:null,answerer:g.mode==='turns'?C.currentPlayer(g):null,answererLocked:false,collectiveReady:false,judgments:Array(g.players.length).fill(null)};});
   }
   function revealAnswer() {
     const g=state.game,q=currentQ(),cur=g.current;
     if(cur.phase!=='answer')return;
+    const lockingRace=C.isRace(g.mode,q)&&g.rulesVersion>=5;
+    if(g.rulesVersion>=5&&C.isCollective(g.mode,q)&&!cur.collectiveReady){cur.collectiveReady=true;refresh();return;}
     if(!C.isCollective(g.mode,q)) {
       if(!Number.isInteger(cur.answerer)){toast(t('pickFirst'));return;}
+      if(lockingRace&&!cur.answererLocked){toast(t('lockAnswererFirst'));return;}
       if(q.type==='choice'&&!cur.selected){toast(t('optionFirst'));return;}
       if(q.type==='choice')cur.judgments[cur.answerer]=cur.selected===q.correctOptionId;
     }
@@ -683,15 +701,28 @@
     cur.phase='scored';audio.play(deltas.some(n=>n>0)?'correct':'wrong');refresh();
 
   }
-  function retryTurnAnswer(undo=false) {
-    const g=state.game,cur=g?.current;
-    if(g?.mode!=='turns'||!cur||cur.phase!==(undo?'scored':'judge'))return;
-    const entry=g.history.find(h=>h.qid===cur.qid&&!h.voided);
-    if(undo&&entry)entry.voided=true;
-    // Retain the question and player. A retry must neither advance the turn nor
-    // put an already displayed question back on the board.
-    cur.phase='answer';cur.selected=null;cur.judgments.fill(null);
-    refresh();
+  function recordPass(reason='pass') {
+    const g=state.game,cur=g?.current,q=currentQ();
+    if(!g||!cur||!q)return;
+    const lockingRace=C.isRace(g.mode,q,g.rulesVersion)&&g.rulesVersion>=5;
+    const deltas=Array(g.players.length).fill(0),judgments=Array(g.players.length).fill(null);
+    if(Number.isInteger(cur.answerer)&&cur.answererLocked&&C.isRace(g.mode,q,g.rulesVersion)){judgments[cur.answerer]=false;const scored=C.scoreQuestion(g.mode,q,judgments,cur.answerer,g.players.length,g.rulesVersion);scored.forEach((value,i)=>{deltas[i]=value;});reason='abandon';}
+    const answerer=lockingRace&&!cur.answererLocked?null:cur.answerer;
+    g.history.push({key:C.key(g.pack.id,q.id),qid:q.id,level:q.level,type:q.type,points:q.points,deltas,judgments,answerer,selected:null,scoredAt:new Date().toISOString(),voided:false,pass:true,passReason:reason});
+    cur.pass=true;cur.phase='scored';audio.play('wrong');refresh();
+  }
+  function voidCurrentQuestion() {
+    const g=state.game,cur=g?.current,q=currentQ();
+    if(!g||!cur||!q)return;
+    const slot=g.board.find(s=>s.qid===cur.qid&&s.level===cur.level);
+    const excluded=g.pack.questions.filter(item=>isHidden(g.pack.id,item.id)).map(item=>item.id);
+    const replacement=C.replacement(g,slot||cur,excluded);
+    const existing=g.history.find(h=>h.qid===q.id);
+    if(existing)existing.voided=true;
+    else g.history.push({key:C.key(g.pack.id,q.id),qid:q.id,level:q.level,type:q.type,points:q.points,deltas:Array(g.players.length).fill(0),judgments:Array(g.players.length).fill(null),answerer:cur.answerer,selected:cur.selected,scoredAt:new Date().toISOString(),voided:true,voidReason:'question'});
+    g.retired=g.retired||[];if(!g.retired.some(s=>s.qid===q.id&&s.level===q.level))g.retired.push({qid:q.id,level:q.level});
+    if(slot&&replacement){const i=g.board.indexOf(slot);g.board[i]=replacement;}
+    g.current=null;persist();toast(replacement?t('questionVoided'):t('questionVoidedNoReplacement'));go('board');
   }
   function returnToBoard() {
     const g=state.game;
@@ -709,8 +740,7 @@
     state.hidden[C.key(packId,qid)]={packId,questionId:qid,hiddenAt:new Date().toISOString(),packTitle:source?.title,prompts:q?Object.fromEntries(C.LANGUAGES.map(l=>[l,q.locales[l].prompt])):undefined};
     const g=state.game;closeModal(true);
     // Hiding affects availability, not scores that were already confirmed.
-    if(g&&g.pack.id===packId&&g.current?.qid===qid){g.current=null;if(state.view==='question')await returnToBoard();else refresh();}
-    else refresh();
+    refresh();
     toast(t('deletedToast'));
   }
 
@@ -718,7 +748,9 @@
     delete state.hidden[C.key(packId,qid)];closeModal(true);refresh();toast(t('restored'));
   }
   function downloadJSON(data,name) {
-    const blob=new Blob([JSON.stringify(data,null,2)+'\n'],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob);
+    const blob=new Blob([JSON.stringify(data,null,2)+'\n'],{type:'application/json;charset=utf-8'});
+    if(window.NeoDownload)return window.NeoDownload(blob,name);
+    const url=URL.createObjectURL(blob);
     const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
   }
   async function retainGamePack(pack){
@@ -802,7 +834,7 @@
     if(a==='home') {if(g&&!g.finished&&['board','question'].includes(state.view))return confirmModal('homeConfirm','homeDesc',()=>go('home'),false,'confirmReturnHome');return go('home');}
     if(a==='resume'){state.resultHistoryId=null;return go(g?.finished?'results':g?.current?'question':'board');}
     if(a==='replay'){const pack=packs.find(p=>p.id===g.pack.id);if(pack)state.activePack=pack.id;state.setup.mode=g.mode;state.setup.count=g.players.length;state.setup.names=[...g.players,...Array(8-g.players.length).fill('')];state.setup.questionCount=normalizeRoundChoice(getPack(),g.questionTarget||g.board.length);return go('setup');}
-    if(a==='library'){if(state.view==='library')return;state.library.from=state.view;state.library.filter='active';state.library.query='';state.libraryScroll=0;return go('library');}
+    if(a==='library'){if(cur?.phase==='answer'){toast(t('libraryBlocked'));return;}if(state.view==='library')return;state.library.from=state.view;state.library.filter='active';state.library.query='';state.libraryScroll=0;return go('library');}
     if(a==='library-back'){
       if(g&&(state.library.from==='board'||(state.library.from==='question'&&!g.current)))return returnToBoard();
       return go(state.library.from);
@@ -816,16 +848,32 @@
       refresh(`[data-action=\"${a}\"]`);return;
     }
     if(a==='pick')return pick(target.dataset.qid,Number(target.dataset.level));
-    if(a==='question-back') {if(cur?.phase==='scored')return returnToBoard();const recorded=g.history.some(h=>h.qid===cur?.qid&&!h.voided);return confirmModal(recorded?'discardEdit':'discard',recorded?'discardEditDesc':'discardDesc',()=>returnToBoard(),false,recorded?'confirmDiscardChanges':'confirmSkipQuestion');}
-    if(a==='answerer'&&cur?.phase==='answer'&&C.isRace(g.mode,q)){if(cur.answerer===Number(target.dataset.player))return;cur.answerer=Number(target.dataset.player);cur.selected=null;cur.judgments.fill(null);return refresh(`[data-action="answerer"][data-player="${cur.answerer}"]`);}
-    if(a==='option'&&cur?.phase==='answer'&&!C.isCollective(g.mode,q)&&Number.isInteger(cur.answerer)&&q.options.includes(target.dataset.option)){cur.selected=target.dataset.option;return refresh(`.option-index[data-option="${cur.selected}"]`);}
+    if(a==='question-back') {
+      if(cur?.phase==='scored')return returnToBoard();
+      return confirmModal('homeConfirm','pauseQuestionDesc',()=>go('home'),false,'confirmReturnHome');
+    }
+    if(a==='answerer'&&cur?.phase==='answer'&&C.isRace(g.mode,q)){if(cur.answererLocked)return;if(cur.answerer===Number(target.dataset.player))return;cur.answerer=Number(target.dataset.player);cur.selected=null;cur.judgments.fill(null);return refresh(`[data-action="answerer"][data-player="${cur.answerer}"]`);}
+    if(a==='lock-answerer'&&cur?.phase==='answer'&&C.isRace(g.mode,q)&&Number.isInteger(cur.answerer)){cur.answererLocked=true;return refresh(`[data-action="lock-answerer"]`);}
+    if(a==='option'&&cur?.phase==='answer'&&!C.isCollective(g.mode,q)&&Number.isInteger(cur.answerer)&&(!C.isRace(g.mode,q,g.rulesVersion)||g.rulesVersion<5||cur.answererLocked)&&q.options.includes(target.dataset.option)){cur.selected=target.dataset.option;return refresh(`.option-index[data-option="${cur.selected}"]`);}
     if(a==='reveal')return revealAnswer();
     if(a==='judge-all'&&cur?.phase==='judge'&&C.isCollective(g.mode,q)){for(const i of targets())cur.judgments[i]=target.dataset.result==='true';return refresh(`[data-action="judge-all"][data-result="${target.dataset.result}"]`);}
     if(a==='judge'&&cur?.phase==='judge'){const i=Number(target.dataset.player);if(!targets().includes(i))return;cur.judgments[i]=target.dataset.result==='true';return refresh(`[data-action="judge"][data-player="${i}"][data-result="${target.dataset.result}"]`);}
     if(a==='commit')return commitScore();
-    if(a==='retry-answer')return retryTurnAnswer();
-    if(a==='undo-score')return retryTurnAnswer(true);
-    if(a==='edit'&&cur?.phase==='scored'){cur.phase='judge';refresh();return;}
+    if(a==='pass'&&cur?.phase==='answer'){
+      if(g.rulesVersion<5)return confirmModal('legacySkip','legacySkipDesc',()=>returnToBoard(),false,'legacySkip');
+      const allPass=C.isCollective(g.mode,q),locked=C.isRace(g.mode,q)&&cur.answererLocked;
+      const title=g.mode==='turns'?'passTurnsTitle':allPass?'passCollectiveTitle':locked?'abandonAnswerTitle':'passRaceTitle';
+      const desc=g.mode==='turns'?'passTurnsDesc':allPass?'passCollectiveDesc':locked?'abandonAnswerDesc':'passRaceDesc';
+      const params=locked?{name:g.players[cur.answerer],h:C.wrongCost(g.mode,q,g.rulesVersion)}:{};
+      return confirmModal(title,desc,()=>recordPass('pass'),false,'confirmPassAnswer',params);
+    }
+    if(a==='void-question')return confirmModal('voidQuestionTitle','voidQuestionDesc',voidCurrentQuestion,true,'voidQuestion');
+    if(a==='edit'&&cur?.phase==='scored'&&canEditJudgment(g,q,cur)){
+      const existing=g.history.findIndex(h=>h.qid===cur.qid&&!h.voided);
+      if(existing<0||activeHistory(g).at(-1)?.qid!==cur.qid)return;
+      g.history.splice(existing,1);
+      cur.phase='judge';refresh();return;
+    }
     if(a==='next')return returnToBoard();
     if(a==='finish')return confirmModal('finishTitle','finishDesc',()=>go('results',()=>{Clock.finish(g);g.current=null;state.resultHistoryId=null;audio.play('finish');}),false,'confirmFinishGame');
     if(a==='hide'||a==='inspect')return openModal({type:a,packId:target.dataset.pack,qid:target.dataset.qid});

@@ -56,15 +56,21 @@
       (d.hostPlays ? ' checked' : '') +
       '></label>' +
       '<div class="qp-grid three"><div>' +
-      select(
-        'qp-selection',
-        t('selection'),
-        [
-          ['host', t('hostSelect')],
-          ['vote', t('voteSelect')]
-        ],
-        d.selection
-      ) +
+      (d.openResponse === 'oral'
+        ? '<p class="qp-label">' +
+          escape(t('selection')) +
+          '</p><p>' +
+          escape(t('turnSelect')) +
+          '</p>'
+        : select(
+            'qp-selection',
+            t('selection'),
+            [
+              ['host', t('hostSelect')],
+              ['vote', t('voteSelect')]
+            ],
+            d.selection
+          )) +
       '</div>' +
       '<div>' +
       select(
@@ -82,6 +88,9 @@
         d.questionCount
       ) +
       '</div></div>' +
+      '<p class="qp-muted">' +
+      escape(t(d.openResponse === 'oral' ? 'oralSetupHint' : 'textSetupHint')) +
+      '</p>' +
       '<div class="qp-grid two"><div>' +
       select(
         'qp-open',
@@ -142,31 +151,71 @@
       );
     if (phase === 'finished') return '';
     let result = '';
+    if (phase === 'briefing') {
+      result += button(
+        'host-begin',
+        t('beginQuestion'),
+        state.players.filter((p) => p.online).length < 2 ||
+          (state.settings.openResponse === 'oral' &&
+            !state.players.find((p) => p.id === state.turnPlayerId)?.online),
+        'primary'
+      );
+      result += button('host-cancel-selection', t('chooseAgain'));
+      if (
+        state.settings.openResponse === 'oral' &&
+        !state.players.find((p) => p.id === state.turnPlayerId)?.online
+      )
+        result += button('pass', t('passAbsentTurn'));
+    }
     if (phase === 'selecting' && state.settings.selection === 'vote')
       result += button('host-close-selection', t('closeSelection'), false, 'primary');
-    if (phase === 'grading' && state.settings.grading === 'host')
+    if (
+      phase === 'grading' &&
+      state.settings.grading === 'host' &&
+      state.current.answers.filter(
+        (a) => !a.unanswered && a.playerId !== state.hostId && a.correct === null
+      ).length > 1
+    )
       result +=
         button('host-all-correct', t('allCorrect')) + button('host-all-wrong', t('allWrong'));
-    if (phase === 'grading')
+    if (phase === 'grading' && state.settings.grading === 'vote')
       result += button('host-close-grading', t('closeGrading'), false, 'primary');
+    if (phase === 'scoreReview') {
+      result += button(
+        'host-confirm-score',
+        t(
+          state.history.length + 1 >= state.settings.questionCount
+            ? 'confirmFinalScore'
+            : 'confirmScore'
+        ),
+        false,
+        'primary'
+      );
+    }
     if (phase === 'results') {
       result += button('host-next', t('next'), false, 'primary');
-      if (state.current?.type === 'open') result += button('host-reopen', t('reopenGrading'));
     }
+    if (['answering', 'grading', 'review', 'scoreReview', 'results'].includes(phase))
+      result += button('host-void', t('voidQuestion'));
     return result + button('host-finish', t('finish'), false, 'danger');
   }
-  function handleAction(action, element, app) {
+  function handleAction(action, element, app, expected) {
+    if (action === 'host-review-answer')
+      return app.send('reopenGrading', { answerId: element.dataset.answer }, expected);
     if (action === 'host-all-correct' || action === 'host-all-wrong')
-      return app.send('judgeAll', { correct: action === 'host-all-correct' });
+      return app.send('judgeAll', { correct: action === 'host-all-correct' }, expected);
     const commands = {
       'host-start': 'start',
+      'host-begin': 'beginQuestion',
+      'host-cancel-selection': 'cancelSelection',
+      'host-confirm-score': 'confirmScore',
+      'host-void': 'voidQuestion',
       'host-close-selection': 'closeSelection',
       'host-close-grading': 'closeGrading',
       'host-next': 'next',
-      'host-finish': 'finish',
-      'host-reopen': 'reopenGrading'
+      'host-finish': 'finish'
     };
-    if (commands[action]) return app.send(commands[action]);
+    if (commands[action]) return app.send(commands[action], {}, expected);
   }
   root.QuizAdmin = Object.freeze({ createView, hostControls, handleAction });
 })(window);

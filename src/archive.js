@@ -1,7 +1,7 @@
 /* Portable and versioned saves. No filesystem permissions or server APIs. */
 (function (root) {
 'use strict';
-const SAVE_VERSION=2, READER_VERSION=6, APP_VERSION='6.0.0';
+const SAVE_VERSION=2, READER_VERSION=7, APP_VERSION='6.1.0';
 const ResultsHistory=(typeof module!=='undefined'&&module.exports)?require('./results-history.js'):root.NeoResultsHistory;
 const PlayerNames=(typeof module!=='undefined'&&module.exports)?require('./player-names.js'):root.NeoPlayerNames;
 const Clock=(typeof module!=='undefined'&&module.exports)?require('./game-clock.js'):root.NeoGameClock;
@@ -31,10 +31,11 @@ function exportSave({game,lang,prefs,hidden,activePack,setup,resultsHistory=[]})
  if(!game||!isObject(game.pack)) throw archiveError('saveIncomplete','No current game');
  const {pack,...round}=game;
  // Preserve legacy V1 rounds whose frozen board predates the V2 12-question step.
- const legacyRound=Number.isInteger(round.questionTarget)&&round.questionTarget>0&&round.questionTarget===round.board?.length&&round.questionTarget%12!==0;
+ const legacyRound=round.rulesVersion<5&&Number.isInteger(round.questionTarget)&&round.questionTarget>0&&round.questionTarget===round.board?.length&&round.questionTarget%12!==0;
  const history=ResultsHistory?ResultsHistory.normalize(resultsHistory,{strict:true}):[];
  const historyNeedsV6=history.some(item=>item?.game?.rulesVersion>=4);
- const minReaderVersion=Math.max(pack.schemaVersion>=3?5:(history.length?4:(legacyRound?1:(round.rulesVersion>=3?3:2))),round.rulesVersion>=4||historyNeedsV6?6:0);
+ const historyNeedsV7=history.some(item=>item?.game?.rulesVersion>=5||item?.game?.questionVariants?.length>item?.game?.questionTarget);
+ const minReaderVersion=Math.max(pack.schemaVersion>=3?5:(history.length?4:(legacyRound?1:(round.rulesVersion>=3?3:2))),round.rulesVersion>=5||round.retired?.length||historyNeedsV7?7:round.rulesVersion>=4||historyNeedsV6?6:0);
  return {kind:'partyquiz-save',saveSchemaVersion:legacyRound?1:SAVE_VERSION,minReaderVersion,writerAppVersion:APP_VERSION,exportedAt:new Date().toISOString(),questionPack:{id:pack.id,version:pack.version,schemaVersion:pack.schemaVersion,fingerprint:fingerprint(pack)},state:{lang,prefs,hidden,activePack,setup,game:round,resultsHistory:history}};
 }
 function normalizeHidden(value, strict=false) {
@@ -90,36 +91,40 @@ function inspectSave(doc,packs,core) {
  const g=JSON.parse(JSON.stringify(doc.state.game));g.pack=JSON.parse(JSON.stringify(pack));
  if(Clock&&!Clock.validate(g))throw archiveError('saveRoundStateInvalid','Invalid game timestamps');
  // Migrate v1 saves that used the whole allocated board without a round target.
- if(doc.saveSchemaVersion===1 && g.questionTarget===undefined)g.questionTarget=g.board?.length;
- if(doc.saveSchemaVersion===2 && (!Number.isInteger(g.questionTarget)||g.questionTarget<12||g.questionTarget%12!==0||g.questionTarget!==g.board?.length))throw archiveError('saveRoundCountInvalid','Invalid round question count');
- if(!core.SUPPORTED_RULES_VERSIONS.includes(g.rulesVersion)||!core.MODES.includes(g.mode)||!Array.isArray(g.players)||g.players.length<2||g.players.length>8||g.players.some(n=>!validPlayerName(n,g.rulesVersion))||!Array.isArray(g.history)||typeof g.finished!=='boolean'||(g.current!==null&&!isObject(g.current))||!core.validBoard(g))throw archiveError('saveRoundStateInvalid','Invalid round state');
- const variants=new Map(g.board.map(s=>[s.qid,core.variant(g.pack.questions.find(q=>q.id===s.qid),s.level)]));
+  if(doc.saveSchemaVersion===1 && g.questionTarget===undefined)g.questionTarget=g.board?.length;
+  if(doc.saveSchemaVersion===1 && g.rulesVersion>=5)throw archiveError('saveRoundCountInvalid','Current rules require save schema 2');
+ if(doc.saveSchemaVersion===2 && (!Number.isInteger(g.questionTarget)||g.questionTarget<1||g.questionTarget!==g.board?.length||(g.rulesVersion<5&&(g.questionTarget<12||g.questionTarget%12!==0))))throw archiveError('saveRoundCountInvalid','Invalid round question count');
+  const playerKeys=new Set();
+  if(!core.SUPPORTED_RULES_VERSIONS.includes(g.rulesVersion)||!core.MODES.includes(g.mode)||!Array.isArray(g.players)||g.players.length<2||g.players.length>8||g.players.some(n=>!validPlayerName(n,g.rulesVersion)||(g.rulesVersion>=5&&(playerKeys.has(String(n).normalize('NFC').trim().toLocaleLowerCase())||!playerKeys.add(String(n).normalize('NFC').trim().toLocaleLowerCase()))))||!Array.isArray(g.history)||typeof g.finished!=='boolean'||(g.current!==null&&!isObject(g.current))||!core.validBoard(g))throw archiveError('saveRoundStateInvalid','Invalid round state');
+ const variants=new Map([...g.board,...(g.retired||[])].map(s=>[s.qid,core.variant(g.pack.questions.find(q=>q.id===s.qid),s.level)]));
  const historyIds=new Set(),committedHistoryIds=new Set();
  for(const h of g.history){
    if(!isObject(h)) throw archiveError('saveScoringHistoryInvalid','Invalid scoring history');
    const q=variants.get(h?.qid);
    if(!q||historyIds.has(h.qid)||h.level!==q.level||h.type!==q.type||h.points!==q.points||typeof h.voided!=='boolean'||h.key!==core.key(pack.id,q.id)||!Array.isArray(h.deltas)||h.deltas.length!==g.players.length||!h.deltas.every(Number.isFinite)||!g.seen.includes(q.id))throw archiveError('saveScoringHistoryInvalid','Invalid scoring history');
    const collective=core.isCollective(g.mode,q), legacyVoidedAnswerer=(h.voided&&h.answerer===undefined), legacyVoidedSelection=(h.voided&&h.selected===undefined);
+   const pass=h.pass===true;
    const answererValid=legacyVoidedAnswerer||(h.answerer===null||(Number.isInteger(h.answerer)&&h.answerer>=0&&h.answerer<g.players.length));
    const selectedValid=legacyVoidedSelection||(h.selected===null||(q.type==='choice'&&typeof h.selected==='string'&&q.options.includes(h.selected)));
-   if(!answererValid||(!legacyVoidedAnswerer&&!collective&&h.answerer===null)||(!legacyVoidedAnswerer&&collective&&h.answerer!==null)||!selectedValid||(!legacyVoidedSelection&&q.type==='open'&&h.selected!==null))throw archiveError('saveScoringHistoryInvalid','Invalid scoring history');
-   if(g.rulesVersion>=3&&g.mode==='turns'&&!h.voided&&h.answerer!==committedHistoryIds.size%g.players.length)throw archiveError('saveTurnOrderInvalid','Invalid turn order');
+   if(!answererValid||(!legacyVoidedAnswerer&&!pass&&!collective&&h.answerer===null)||(!legacyVoidedAnswerer&&collective&&h.answerer!==null)||!selectedValid||(!legacyVoidedSelection&&q.type==='open'&&h.selected!==null))throw archiveError('saveScoringHistoryInvalid','Invalid scoring history');
+    if(g.rulesVersion>=3&&g.mode==='turns'&&!h.voided&&h.answerer!==committedHistoryIds.size%g.players.length)throw archiveError('saveTurnOrderInvalid','Invalid turn order');
    historyIds.add(h.qid);
-   if(!Array.isArray(h.judgments)||h.judgments.length!==g.players.length||h.judgments.some(v=>v!==null&&typeof v!=='boolean'))throw archiveError('saveJudgmentsInvalid','Invalid adjudication record');
+   if(!Array.isArray(h.judgments)||h.judgments.length!==g.players.length||h.judgments.some(v=>v!==null&&typeof v!=='boolean')||(!pass&&!h.voided&&collective&&h.judgments.some(v=>v===null)))throw archiveError('saveJudgmentsInvalid','Invalid adjudication record');
    if(!h.voided){
       committedHistoryIds.add(h.qid);
-      let expected;
-      try{expected=core.scoreQuestion(g.mode,q,h.judgments,h.answerer,g.players.length,g.rulesVersion)}catch(_){throw archiveError('saveScoreIncomplete','Incomplete score record');}
+       let expected;
+       try{expected=core.scoreRecord(g.mode,q,h,g.players.length,g.rulesVersion)}catch(_){throw archiveError('saveScoreIncomplete','Incomplete score record');}
       if(expected.some((x,i)=>x!==h.deltas[i]))throw archiveError('saveScoreMismatch','Score verification failed');
    }
  }
  if(g.current){
    const c=g.current,q=variants.get(c.qid);
    const collective=q&&core.isCollective(g.mode,q),choice=q?.type==='choice';
+   const activePass=c.pass===true;
    const answererValid=c.answerer===null||(Number.isInteger(c.answerer)&&c.answerer>=0&&c.answerer<g.players.length);
    const selectedValid=c.selected===null||(choice&&typeof c.selected==='string'&&q.options.includes(c.selected));
    const turnAnswerer=g.rulesVersion>=3&&g.mode==='turns'&&c.phase!=='scored' ? core.currentPlayer(g) : null;
-   if(!q||!g.seen.includes(c.qid)||c.level!==q.level||!['answer','judge','scored'].includes(c.phase)||!Array.isArray(c.judgments)||c.judgments.length!==g.players.length||c.judgments.some(v=>v!==null&&typeof v!=='boolean')||!answererValid||!selectedValid||(!collective&&c.phase!=='answer'&&c.answerer===null)||(collective&&c.answerer!==null)||(collective&&c.selected!==null)||(q.type==='open'&&c.selected!==null)||(!collective&&choice&&c.phase!=='answer'&&c.selected===null)||(turnAnswerer!==null&&c.answerer!==turnAnswerer))throw archiveError('saveActiveQuestionInvalid','Invalid active question');
+   if(!q||!g.seen.includes(c.qid)||c.level!==q.level||!['answer','judge','scored'].includes(c.phase)||!Array.isArray(c.judgments)||c.judgments.length!==g.players.length||c.judgments.some(v=>v!==null&&typeof v!=='boolean')||!answererValid||!selectedValid||(!activePass&&!collective&&c.phase!=='answer'&&c.answerer===null)||(collective&&c.answerer!==null)||(collective&&c.selected!==null)||(q.type==='open'&&c.selected!==null)||(!activePass&&!collective&&choice&&c.phase!=='answer'&&c.selected===null)||(turnAnswerer!==null&&c.phase!=='scored'&&!activePass&&c.answerer!==turnAnswerer))throw archiveError('saveActiveQuestionInvalid','Invalid active question');
    if(c.phase==='scored'){
      if(!committedHistoryIds.has(c.qid))throw archiveError('saveCommittedScoreMissing','Missing committed score');
      const committed=g.history.find(h=>h.qid===c.qid&&!h.voided);

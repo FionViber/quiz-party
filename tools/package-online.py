@@ -18,6 +18,11 @@ from pathlib import Path
 SOURCE = Path(__file__).resolve().parent.parent
 PRIVATE = (SOURCE / "private").resolve()
 MARKER = ".package-online-owned"
+VERSION = ".".join(json.loads((SOURCE / "package.json").read_text(encoding="utf-8"))["version"].split(".")[:2])
+if not re.fullmatch(r"\d+\.\d+", VERSION):
+    raise RuntimeError("Invalid release version")
+RELEASE_ZIP = f"Quiz-Party-v{VERSION}-Release.zip"
+SOURCE_ZIP = f"Quiz-Party-v{VERSION}-Source.zip"
 
 PUBLIC_ROOT = {
     "index.html",
@@ -29,6 +34,7 @@ PUBLIC_ROOT = {
 PUBLIC_ONLINE = {
     "i18n.js",
     "ui.js",
+    "round-views.js",
     "keys.js",
     "history.js",
     "history-store.js",
@@ -283,7 +289,7 @@ def manifest(output: Path, public: Path, source: Path) -> None:
         "format": "quiz-party-release-manifest-v1",
         "public": digest_tree(public),
         "source": digest_tree(source),
-        "archives": ["Quiz-Party-v6.0-Release.zip", "Quiz-Party-v6.0-Source.zip"],
+        "archives": [RELEASE_ZIP, SOURCE_ZIP],
     }
     (output / "manifest.json").write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
@@ -318,8 +324,8 @@ def main() -> int:
     source_stage = output / "Quiz-Party-Source"
     source_stage.mkdir()
     stage_source(source_stage)
-    zip_tree(public_stage, output / "Quiz-Party-v6.0-Release.zip", "Quiz-Party")
-    zip_tree(source_stage, output / "Quiz-Party-v6.0-Source.zip", "Quiz-Party-Source")
+    zip_tree(public_stage, output / RELEASE_ZIP, "Quiz-Party")
+    zip_tree(source_stage, output / SOURCE_ZIP, "Quiz-Party-Source")
     manifest(output, public_stage, source_stage)
     print(f"Created release packages under {output}")
     return 0

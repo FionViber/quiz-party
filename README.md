@@ -2,47 +2,117 @@
 
 [在线游玩 / Play online](https://fionviber.github.io/quiz-party/)
 
+[源码构建与部署说明](docs/联机开发与部署.md)
+
 ## 简体中文
 
-### 开始游戏
+### 开始前
 
-单机模式供 2–8 位玩家共用一块屏幕。联机模式供 2–32 位玩家各自使用电脑、平板或手机，不参赛的主持人不占玩家名额。
+单机模式供 2–8 人共用屏幕。联机文字模式供 2–32 人各用自己的设备。联机口头轮流模式供 2–8 人各用自己的设备。不参赛的主持人不占玩家名额。创建房间和进入单机模式需要管理员解锁。
 
-加入房间时，选择“联机模式”，输入主持人分享的六位房间码和你的名字，再点击“准备好了”。创建房间和进入单机模式需要管理员解锁。
+开局前确认名单。名字最多 12 个字符，不能重名。开局后名单锁定。迟到者参加下一局。主持人可以参赛，也可以只负责选题、发题、判分和管理。
 
-下载版的单机模式在本地运行，联机入口会打开在线网站。
+选择题为 100、200、300、400 分，简答题为 200、400、600、800 分。每局最多 96 题，轮流模式会调整为完整轮次。
 
-主持人可以选择参赛，也可以只负责选题、判分和管理。选择题为 100、200、300、400 分，简答题为 200、400、600、800 分。题板按所选分类随机生成，选择题占 5/8–6/8，各题型的分值档位尽量均衡。
+成品包解压后打开 index.html，单机模式在本地运行。联机入口会打开在线网站。
 
-### 联机玩法
+### 单机步骤
 
-主持人选题，或由玩家投票选题。每人一票，截止前可以改选。票数实时显示，最高票题目入选。平票时随机选择，无人投票时由主持人选择。
+#### 一起回答
 
-每题可设置 30 秒、60 秒或 120 秒。选择题各自选择并提交，由游戏自动判分。简答题可以输入文字，也可以配合已有的语音聊天口头回答。文字答案提交后锁定。口头模式先共同思考，再按名单依次回答，全部回答完才揭晓标准答案。
+1. 选择“一起回答”。
 
-答对加该题分值。选择题答错不扣分，简答题答错扣一半分值。超时未作答也按答错处理。
+2. 选择题出现后，大家私下在纸上写选项，或把表示选项的手势藏好，准备后同时亮出。
 
-简答题可由主持人判分，也可由其他玩家投“答对／答错”。玩家不能给自己投票，未选择的答案按弃权处理。多数有效票决定结果，平票或无人投票时交主持人复核。主持人自己的答案由其他玩家复核。主持人可在进入下一题前重新判分，原分数会被替换。
+3. 操作者确认准备好，大家同时亮出。
 
-主持人断线时，当前题仍按原截止时间收答案，之后等待主持人重连。同一浏览器刷新后会恢复身份。重新打开页面后，可以通过“返回房间”继续。
+4. 操作者揭晓答案，逐人判分并确认积分。
 
-### 单机玩法
+5. 简答题先读题，大家示意后确认抢答者。只有无法分清先后时才按界面优先序处理平手。确认前认错人可以改，确认后不能改。选定玩家作最终回答，再揭晓和判分。
 
-一起回答：选择题同时作答，答错不扣分。简答题由一人抢答，答错扣一半分值。
+6. 无人抢答得 0 分。已锁定的抢答者放弃或答错，按简答题规则扣半分。
 
-一起抢答：每题由一人抢答，答对加分，答错扣一半分值。
+#### 一起抢答
 
-轮流回答：按玩家顺序回答。选择题答错不扣分，简答题答错扣一半分值。
+1. 选择“一起抢答”。
 
-### 操作与记录
+2. 读题后大家示意。只有无法分清先后时才按界面优先序处理平手。确认前可以改，确认后不能改。
 
-名字最多 12 个字符，联机文字答案最多 500 个字符。按钮上标有单键操作提示，选择题使用数字键 1–6，题板使用方向键和 Enter。
+3. 选定玩家完成最终回答。选择题由该玩家选项，简答题由该玩家口头回答。
 
-手机上的题目跟随当前界面语言，可通过顶栏切换。电脑大屏同时显示三语题目。
+4. 揭晓答案，判分并确认。无人抢答得 0 分。已锁定者放弃或答错，选择题扣半分，简答题也扣半分。
 
-设置中可以分别开关音效和背景音乐。默认音效开启、音乐关闭。背景音乐每次播放结束后停顿 15 秒，再次播放。
+#### 轮流回答
 
-结算页同时显示排名、分数走势、答对题数和游戏时长，可以下载完整结果图片。结束后的联机对局自动存入本机历史记录，历史记录支持导出和导入存档。单机模式保留独立的存档及题包导入功能。
+1. 选择“轮流回答”。
+
+2. 当轮玩家选题并作答，或选择弃答。弃答得 0 分并消耗本轮机会。
+
+3. 正式答错的选择题得 0 分，简答题扣半分。揭晓后判分确认，再轮到下一位。
+
+4. 题数按完整轮次设置。例如 5 人的 24 题调整为 20 题。
+
+### 单机共同规则
+
+答案揭晓后不能重答。当前题在确认积分前可以复核判分。确认后到进入下一题或结束游戏前，仍可复核当前题。
+
+题目有误，或设备、打断等破坏公平时，操作者可以作废本题，撤回本题分数，换同分类、同题型、同分值题目。作废题不消耗轮流机会。
+
+隐藏题目表示以后不再使用，不代表当前取消。查证只在答案揭晓后进行。
+
+### 联机文字步骤
+
+1. 主持人创建房间，设置题数、选题、答题时间和判分方式。
+
+2. 玩家输入六位房间码和不重复名字，加入并点“准备好了”。至少两位参赛玩家在线后才能发新题。
+
+3. 每题先选题。投票时每人一票，截止前可改。最高票入选，平票随机，无票由主持人选。
+
+4. 选题后进入准备页，准备页不发送题干。主持人发题后开始 30、60 或 120 秒倒计时。
+
+5. 选择题各自提交，提交后锁定并自动核对。文字简答提交最终答案，答错扣半分，弃答或超时得 0 分。
+
+6. 揭晓答案并判分，进入待确认积分阶段。主持人确认后进入本题结果，再按“下一题”继续。最后一题按“确认并结算”结束游戏。
+
+### 联机“轮流作答，简答题口述”步骤
+
+1. 选择“轮流作答，简答题口述”。整局按轮次进行，使用 2–8 人。正常完成时每位玩家机会相同。若提前结束，机会可能不完整。题数按完整轮次设置，例如 5 人的 24 题调整为 20 题。
+
+2. 每题只有当轮玩家作答。其他玩家标记为非当轮，不算作答机会，也不算漏答。
+
+3. 选择题由当轮玩家点选项。简答题通过已有外部语音聊天口头回答。当前玩家或主持人确认说完最终答案后揭晓。可以弃答，弃答消耗机会并得 0 分，超时也得 0 分。
+
+4. 当轮玩家或主持人选题。主持人负责发题并开始计时。揭晓、判分、确认后轮到下一位。
+
+### 联机判分
+
+1. 主持人判其他玩家的答案。主持人自己的答案由其他玩家判定。
+
+2. 玩家投票时，每份答案最多三位非作者评审，每位玩家最多三份任务，限时 90 秒。无任务者等待，未投票为弃权。
+
+3. 有效票多数决定。平票或无票由主持人独立复核。
+
+4. “全对”和“全错”只填写当前可判答案草稿。最终确认前不计分。主持人已评分后可只复核一份，不改原答案，不重做整题。
+
+### 联机中断
+
+房间连续两小时没有活动，会自动结算已经确认的成绩。在线身份有效期为一天，本机历史和已导出的文件不随房间过期而消失。
+
+刷新同一浏览器会恢复身份。请用原浏览器的“返回房间”继续。换设备或丢失身份无法恢复，只能参加新局。
+
+主持人短暂离开时停在准备页或结果页。主持人断线时，已开始的答题或评审按原截止时间继续。积分确认和下一题等待主持人回来，不自动移交主持权。已有成绩可以通过“查看已确认成绩”保存为图片。
+
+玩家暂时离线保留座位，当前题按弃答或超时处理。设备或题目问题破坏公平时，作废本题，撤回分数，换同分类、同题型、同分值题目。
+
+真正散场时结束游戏，只算已确认积分。下一局创建新房间并分享新码。
+
+### 设置、结算和记录
+
+音效默认开，音乐默认关。音乐每首结束后等待 15 秒再循环。手机题目跟随界面语言，宽屏电脑可显示三语，游戏自带思源黑体。
+
+结算显示排名、分数走势、答对题数和时长，可导出 PNG。联机对局自动保存本机历史，支持导出导入。单机保留独立存档和题包导入。
+
+旧存档保留原计分方式。旧局的跳题不会推进轮流顺序，开始新局后使用新的弃答与完整轮次流程。
 
 ### 来源与许可
 
@@ -52,45 +122,95 @@
 
 ## English
 
-### Get started
+### Before you start
 
-Offline mode is for 2–8 players sharing a screen. Online mode supports 2–32 players on their own computers, tablets or phones. A host who is not playing does not use a player seat.
+Offline mode is for 2–8 players sharing one screen. Online text mode is for 2–32 players on their own devices. Online oral-turn mode is for 2–8 players. A non-playing host uses no player seat. Administrator access is required to create a room or enter offline mode.
 
-Choose Online mode, enter the host’s six-digit room code and your name, then select Ready. Administrator access is required to create a room or play offline.
+Agree on the list first. Names must be unique and no longer than 12 characters. The list locks when the game starts. Late arrivals play next game. The host may play or only operate the game.
 
-In the downloaded edition, offline mode runs locally and the online button opens the website.
+Multiple-choice questions are worth 100, 200, 300 or 400 points. Short answers are worth 200, 400, 600 or 800. A game has at most 96 questions. Turn-based games use complete cycles.
 
-The host can participate or manage the game without playing. Multiple-choice questions are worth 100, 200, 300 or 400 points. Short-answer questions are worth 200, 400, 600 or 800 points. Boards are randomized within the selected categories. Multiple-choice questions make up 5/8–6/8 of the board, with point tiers balanced within each question type.
+To use the release package, unzip it and open index.html. Offline mode runs locally. The online button opens the website.
 
-### Online play
+### Offline steps
 
-The host selects a question, or players vote. Each player has one vote and can change it before voting closes. Counts update live. The highest-voted question wins, with a random choice among tied leaders. If nobody votes, the host chooses.
+#### Together
 
-Choose 30, 60 or 120 seconds per question. Multiple-choice answers are submitted individually and scored automatically. Short answers can be typed or given aloud using your existing voice call. Text submissions are locked. In oral mode, everyone gets thinking time, then answers in the displayed order. The standard answer is revealed after everyone has finished.
+1. Select “Together”.
 
-A correct answer earns the full question value. Wrong multiple-choice answers lose no points. Wrong short answers lose half the question value. A missed deadline counts as an incorrect answer.
+2. For multiple choice, write the option on paper or hide the hand signal for it until everyone reveals together.
 
-Short answers can be judged by the host or by other players voting Correct or Incorrect. You cannot vote on your own answer. Unmarked answers are abstentions. A majority of valid votes decides the result. Ties and answers with no votes go to the host for review. Another player reviews the host’s own answer. The host can reopen grading before the next question, replacing the original scores.
+3. The operator confirms readiness. Everyone reveals together.
 
-If the host disconnects, the current deadline still applies. The room then waits for the host to return. Refreshing restores your identity. When you reopen the game in the same browser, use Resume room to continue.
+4. Reveal the answer, judge each player and confirm scores.
 
-### Offline play
+5. For a short answer, read first. Players signal. Use the interface priority only when the first signal is unclear or tied. Before locking, a mistaken identity may be changed. After locking, it cannot. The selected player gives the final answer, then reveal and judge.
 
-Together: everyone answers multiple-choice questions. Wrong choices have no penalty. One player buzzes in for short answers and loses half the value if wrong.
+6. Nobody signaling scores 0. A locked answerer who passes or is wrong uses the short-answer penalty.
 
-Buzz: one player answers each question. Correct answers earn full points and wrong answers lose half.
+#### Buzz
 
-Turns: players answer in order. Wrong multiple-choice answers have no penalty, and wrong short answers lose half.
+1. Select “Buzz”.
 
-### Controls and records
+2. Read the question and let players signal. Confirm who signalled first. Use the displayed rotating order only when the group cannot tell who was first. Change is allowed only before locking.
 
-Names are limited to 12 characters. Online text answers are limited to 500 characters. Buttons show their single-key shortcuts. Use 1–6 for multiple-choice answers and arrow keys plus Enter on the question board.
+3. The selected player answers. Reveal, judge and confirm. Nobody buzzing scores 0. A locked wrong or passed answer loses half for both multiple choice and short answer.
 
-On phones, questions follow the current interface language. Change it in the top bar. Wide desktop layouts show all three languages together.
+#### Turns
 
-Sound effects and background music have separate switches in Settings. Sound effects start on and music starts off. Music waits 15 seconds after a track ends before playing again.
+1. Select “Turns”.
 
-Results show rankings, score progression, correct-answer counts and game duration together. Download the complete results image from that page. Finished online games are saved to local history, with archive export and import. Offline mode retains its own saves and question-pack imports.
+2. The current player selects and answers, or passes. Passing scores 0 and consumes the turn.
+
+3. A wrong submitted multiple-choice answer is 0. A wrong submitted short answer loses half. Reveal, confirm, then move to the next player.
+
+4. Use complete cycles. For example, 24 questions with 5 players becomes 20.
+
+### Shared offline rules
+
+After reveal, nobody answers again. Review judgment before confirmation, and until the current question moves to the next question or the game ends.
+
+If a question or interruption makes play unfair, void it, withdraw its score and replace it with the same category, type and value. A voided question does not consume a turn. Hiding means future non-use, not cancelling the current question. Check sources only after reveal.
+
+### Online text steps
+
+1. The host creates a room and chooses question count, selection, time and grading.
+
+2. Players enter the six-digit code and unique names, join and select “Ready”. At least two participating players must be online to start a new question.
+
+3. Select a question. Voting gives one changeable vote per player. The top choice wins. Ties are random. With no votes, the host chooses.
+
+4. The preparation page does not send the question text. The host presents it and starts 30, 60 or 120 seconds.
+
+5. Players submit multiple-choice answers independently. Text answers lock on submission. A wrong submitted short answer loses half. Pass and timeout score 0.
+
+6. Reveal, grade and wait for score confirmation. The host confirms to open that question’s results, then selects Next Question. On the last question, Confirm and Finish settles the game.
+
+### Online oral turns
+
+1. Choose the option for taking turns with spoken short answers. Use 2–8 players and complete cycles, such as 20 questions for 5 players when the requested count is 24. In a normally completed game, everyone gets the same number of turns. Ending early can leave the cycle incomplete.
+
+2. Only the current player answers. Others are not in turn and do not receive an opportunity or a missed-answer count.
+
+3. The current player selects multiple choice on their device or answers short answer through an external voice call. The player or host confirms that the final spoken answer is complete, then the answer is revealed. Passing consumes the opportunity and scores 0. Timeout is 0.
+
+4. The current player or host selects the question. The host presents it and starts the timer. Reveal, grade and confirm, then move to the next player.
+
+### Online grading and interruptions
+
+Two hours of room inactivity automatically ends the game using confirmed scores. An online identity lasts one day. Local history and exported files remain available after the room expires.
+
+The host grades other players. Another player grades the host. In player voting, each answer gets at most three non-author reviewers and each player gets at most three tasks. The window is 90 seconds. Unassigned players wait. Abstentions, ties and no votes go to independent host review. “All correct” and “All incorrect” are drafts until confirmation. A host may reopen one answer without replaying the question.
+
+Refresh in the same browser restores identity. Use Resume room there. A different device or lost identity cannot restore the seat, so join a new game. A host leaving briefly pauses at preparation or results. If the host disconnects, finish the current timed answer or assigned review. Only the host can confirm scores or start the next question. You can still view confirmed scores and save their image. Host control is never transferred randomly. A temporarily offline player keeps the seat and is treated as pass or timeout. If fairness is lost, void and replace the question with the same category, type and value. Finish the game when the gathering ends. Only confirmed scores count. Create a new room for the next game.
+
+### Settings, results and records
+
+Sound effects start on. Music starts off and waits 15 seconds between tracks. Phones follow the interface language. Wide desktop layouts can show all three languages. Offline mode uses local fonts.
+
+Results show ranking, score progression, correct counts and duration. Export PNG. Finished online games are saved locally and support archive export/import. Offline mode keeps separate saves and question-pack imports.
+
+Existing saves keep their earlier scoring rules. Skipping in an earlier game does not advance a turn. Start a new game to use the new pass and complete-cycle rules.
 
 ### Credits and licenses
 
@@ -100,45 +220,89 @@ Page encryption is based on [PageCrypt](https://github.com/FionViber/pagecrypt).
 
 ## 繁體中文
 
-### 開始遊戲
+### 開始前
 
-單機模式供 2–8 位玩家共用一個螢幕。連線模式供 2–32 位玩家各自使用電腦、平板或手機，不參賽的主持人不占玩家名額。
+單機模式供 2–8 人共用螢幕。連線文字模式供 2–32 人各用自己的裝置。連線口頭輪流模式供 2–8 人使用。不參賽主持人不占玩家名額。建立房間與進入單機模式需要管理員解鎖。
 
-加入房間時，選擇「連線模式」，輸入主持人分享的六位房間碼與你的名字，再按「準備好了」。建立房間與進入單機模式需要管理員解鎖。
+開始前確認名單。名字最多 12 個字元，不能重複。開始後名單鎖定。遲到者參加下一局。主持人可以參賽，也可以只負責操作。
 
-下載版的單機模式在本機執行，連線入口會開啟網站。
+選擇題為 100、200、300、400 分，簡答題為 200、400、600、800 分。每局最多 96 題，輪流模式會調整為完整輪次。
 
-主持人可以參賽，也可以只負責選題、判分與管理。選擇題為 100、200、300、400 分，簡答題為 200、400、600、800 分。題板按所選分類隨機產生，選擇題占 5/8–6/8，各題型的分值級距盡量均衡。
+成品包解壓縮後開啟 index.html，單機模式在本機執行。連線入口會開啟網站。
 
-### 連線玩法
+### 單機步驟
 
-由主持人選題，或由玩家投票選題。每人一票，截止前可以改選。票數即時顯示，最高票題目入選。平票時隨機選擇，無人投票時由主持人選擇。
+#### 一起回答
 
-每題可設定 30 秒、60 秒或 120 秒。選擇題各自選擇並提交，由遊戲自動判分。簡答題可以輸入文字，也可以配合既有的語音聊天口頭回答。文字答案提交後鎖定。口頭模式先共同思考，再按名單依次回答，全部回答完才揭曉標準答案。
+1. 選擇「一起回答」。
 
-答對加該題分值。選擇題答錯不扣分，簡答題答錯扣一半分值。逾時未作答也按答錯處理。
+2. 選擇題先私下在紙上寫選項，或把表示選項的手勢藏好，準備後同時亮出。
 
-簡答題可由主持人判分，也可由其他玩家投「答對／答錯」。玩家不能為自己投票，未選擇的答案按棄權處理。多數有效票決定結果，平票或無人投票時交主持人複核。主持人自己的答案由其他玩家複核。主持人可在進入下一題前重新判分，原分數會被取代。
+3. 操作者確認準備好，大家同時亮出。
 
-主持人斷線時，目前題目仍按原截止時間收答案，之後等待主持人重新連線。同一瀏覽器重新整理後會恢復身分。重新開啟頁面後，可以透過「返回房間」繼續。
+4. 操作者揭曉答案，逐人判分並確認分數。
 
-### 單機玩法
+5. 簡答題先讀題，大家示意後確認搶答者。只有無法分清先後時才按介面優先序處理平手。確認前認錯人可以改，確認後不能改。選定玩家作最終回答，再揭曉和判分。
 
-一起回答：選擇題同時作答，答錯不扣分。簡答題由一人搶答，答錯扣一半分值。
+6. 無人搶答得 0 分。已鎖定者棄答或答錯按簡答題規則扣半分。
 
-一起搶答：每題由一人搶答，答對加分，答錯扣一半分值。
+#### 一起搶答
 
-輪流回答：按玩家順序回答。選擇題答錯不扣分，簡答題答錯扣一半分值。
+1. 選擇「一起搶答」。
 
-### 操作與紀錄
+2. 讀題後大家示意，只有無法分清先後時才按介面優先序處理平手。確認前可改，確認後不可改。
 
-名字最多 12 個字元，連線文字答案最多 500 個字元。按鈕上標有單鍵操作提示，選擇題使用數字鍵 1–6，題板使用方向鍵與 Enter。
+3. 選定玩家回答。選擇題由該玩家選項，簡答題由該玩家口頭回答。
 
-手機上的題目跟隨目前介面語言，可透過頂欄切換。電腦大螢幕同時顯示三語題目。
+4. 揭曉、判分並確認。無人搶答得 0 分。已鎖定者棄答或答錯，選擇題扣半分，簡答題也扣半分。
 
-設定中可以分別開關音效與背景音樂。預設音效開啟、音樂關閉。背景音樂每次播放結束後停頓 15 秒，再次播放。
+#### 輪流回答
 
-結算頁同時顯示排名、分數走勢、答對題數與遊戲時長，可以下載完整結果圖片。結束後的連線對局自動存入本機歷史紀錄，歷史紀錄支援匯出與匯入存檔。單機模式保留獨立的存檔及題包匯入功能。
+1. 選擇「輪流回答」。
+
+2. 當輪玩家選題並作答，或棄答。棄答得 0 分並消耗本輪機會。
+
+3. 選擇題正式答錯得 0 分，簡答題正式答錯扣半分。揭曉、確認後輪到下一位。
+
+4. 題數按完整輪次設定。例如 5 人的 24 題調整為 20 題。
+
+### 單機共同規則
+
+答案揭曉後不能重答。當前題在確認分數前可以複核判分。確認後到進入下一題或結束遊戲前，仍可複核當前題。
+
+題目有誤，或裝置、打斷破壞公平時，可以作廢本題，撤回分數，換同分類、同題型、同分值題目。作廢題不消耗輪流機會。隱藏題目代表之後不再使用，不代表目前取消。查證只在答案揭曉後進行。
+
+### 連線步驟
+
+1. 主持人建立房間，設定題數、選題、答題時間和判分。
+
+2. 玩家輸入六位房間碼和不重複名字，加入並按「準備好了」。至少兩位參賽玩家在線後才能發新題。
+
+3. 每題先選題。投票時每人一票，截止前可改。最高票入選，平票隨機，無票由主持人選。
+
+4. 選題後先進入準備頁，不發送題幹。主持人發題後開始 30、60 或 120 秒倒數。
+
+5. 文字選擇題各自提交並自動核對。文字簡答提交後鎖定，答錯扣半分，棄答或逾時得 0 分。
+
+6. 選擇「輪流作答，簡答題口述」。整局輪流，使用 2–8 人。正常完成時每位玩家機會相同，提前結束時機會可能不完整。每題只有當輪玩家作答。選擇題由當輪玩家點選項，簡答題用外部語音聊天口頭回答。當輪玩家或主持人確認說完最終答案後揭曉。當輪玩家可棄答，消耗機會並得 0 分。主持人負責發題並開始計時，也可代選題。
+
+7. 揭曉、判分、等待確認分數。主持人確認後進入本題結果，再按「下一題」繼續。最後一題按「確認並結算」結束。題數按完整輪次設定，例如 5 人的 24 題調整為 20 題。
+
+### 連線判分和中斷
+
+房間連續兩小時沒有活動，會自動結算已確認的成績。連線身分有效期為一天，本機歷史與已匯出的檔案不會隨房間過期而消失。
+
+主持人判其他玩家，自己的答案由其他玩家判定。玩家投票時每份答案最多三位非作者評審，每位玩家最多三份任務，限時 90 秒。無任務者等待，未投票為棄權。多數決定，平票或無票由主持人獨立複核。「全對」和「全錯」只填寫草稿，確認前不計分。主持人可只複核一份，不改答案，不重做整題。
+
+同一瀏覽器重新整理會恢復身分，請用「返回房間」繼續。換裝置或遺失身分無法恢復，只能參加新局。主持人短暫離開停在準備頁或結果頁。主持人斷線時，已開始的答題或評審按原截止時間繼續。積分確認與下一題等待主持人回來，不自動移交主持權。已有成績可透過「查看已確認成績」儲存圖片。玩家離線保留座位，按棄答或逾時處理。公平被破壞時作廢並換同分類、同題型、同分值題目。散場時結束遊戲，只算已確認分數，下一局建立新房間。
+
+### 設定、結算和紀錄
+
+音效預設開啟，音樂預設關閉，每首結束後等待 15 秒再循環。手機題目跟隨介面語言，寬屏電腦可顯示三語，單機使用本地字型。
+
+結算顯示排名、分數走勢、答對題數和時長，可匯出 PNG。連線對局自動保存本機歷史，支援匯出匯入。單機保留獨立存檔和題包匯入。
+
+舊存檔保留原計分方式。舊局跳題不會推進輪流順序，開始新局後使用新的棄答與完整輪次流程。
 
 ### 來源與授權
 

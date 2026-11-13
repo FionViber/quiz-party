@@ -20,6 +20,7 @@ fs.mkdirSync(path.join(out, 'docs'), { recursive: true });
 for (const name of [
   'i18n.js',
   'ui.js',
+  'round-views.js',
   'keys.js',
   'history.js',
   'history-store.js',
@@ -85,6 +86,7 @@ const html =
     'online/results.js',
     'online/history.js',
     'online/history-store.js',
+    'online/round-views.js',
     'online/ui.js',
     'online/main.js'
   ]

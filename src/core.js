@@ -241,8 +241,9 @@
     }
     return shuffleInPlace(out,random);
   }
-  function planBoard(pack, excluded=[], count, random=Math.random) {
-    if (!Number.isInteger(count) || count < 12 || count % 12 !== 0) return {feasible: false, reason: 'Round count must be a multiple of 12'};
+  function planBoard(pack, excluded=[], count, random=Math.random, options={}) {
+    const flexible=options&&options.flexibleCount===true;
+    if (!Number.isInteger(count) || (flexible ? count<1 : count < 12 || count % 12 !== 0)) return {feasible: false, reason: flexible ? 'Round count must be positive' : 'Round count must be a multiple of 12'};
     const blocked = new Set(excluded), candidates = [];
     for (const q of pack.questions || []) if (!blocked.has(q.id) && levels(q).length) candidates.push(q);
     if (count > candidates.length) return {feasible: false, reason: 'Not enough eligible questions for this round'};
@@ -260,14 +261,19 @@
     const ideal = counts.slice(0, 4).every(x => x >= Math.floor(low / 4) && x <= Math.ceil(low / 4)) && counts.slice(4).every(x => x >= Math.floor((count - low) / 4) && x <= Math.ceil((count - low) / 4));
     return {feasible: true, board, counts, choiceCount: counts.slice(0, 4).reduce((a, b) => a + b, 0), openCount: counts.slice(4).reduce((a, b) => a + b, 0), adjusted: low !== preferred || !ideal};
   }
-  function drawBoard(pack,excluded,count,random=Math.random) {
-    const plan=planBoard(pack,excluded,count,random);if(!plan.feasible)throw new Error(plan.reason);return shuffleInPlace(plan.board.slice(),random);
+  function drawBoard(pack,excluded,count,random=Math.random,options={}) {
+    const plan=planBoard(pack,excluded,count,random,options);if(!plan.feasible)throw new Error(plan.reason);return shuffleInPlace(plan.board.slice(),random);
   }
   function validBoard(game) {
     if(!Array.isArray(game.board)||!Array.isArray(game.seen))return false;
-    const qs=new Map(game.pack.questions.map(q=>[q.id,q])), ids=new Set();
+    const qs=new Map(game.pack.questions.map(q=>[q.id,q])), ids=new Set(), boardLevels=new Map();
     for(const s of game.board) {
       if(!s||!qs.has(s.qid)||ids.has(s.qid)||!levels(qs.get(s.qid)).includes(s.level)) return false;
+      ids.add(s.qid); boardLevels.set(s.qid,s.level);
+    }
+    for(const s of Array.isArray(game.retired)?game.retired:[]) {
+      if(!s||!qs.has(s.qid)||!levels(qs.get(s.qid)).includes(s.level)) return false;
+      if(boardLevels.has(s.qid)&&boardLevels.get(s.qid)!==s.level)return false;
       ids.add(s.qid);
     }
     if(new Set(game.seen).size!==game.seen.length||game.seen.some(id=>!ids.has(id)))return false;
@@ -279,10 +285,31 @@
     const used=new Set([...game.seen,...excluded]), qs=new Map(game.pack.questions.map(q=>[q.id,q]));
     return game.board.filter(s=>!used.has(s.qid)).map(s=>variant(qs.get(s.qid),s.level));
   }
+  /* Pick a replacement without changing the frozen category/format/value contract. */
+  function replacement(game, slot, excluded=[], random=Math.random) {
+    if(!game||!slot||!Array.isArray(game.pack?.questions))return null;
+    const blocked=new Set([...(game.seen||[]),...(game.board||[]).map(s=>s.qid),...(game.retired||[]).map(s=>s.qid),...excluded]);
+    const base=game.pack.questions.find(q=>q.id===slot.qid), original=base&&variant(base,slot.level);
+    if(!original)return null;
+    const categories=root.NeoCategoryFilter||(typeof module!=='undefined'&&module.exports?require('./category-filter.js'):null);
+    if(!categories)throw new Error('Category filtering is unavailable');
+    const boardIds=new Set((game.board||[]).map(s=>s.qid));
+    const selected=game.selectedCategoryIds===undefined
+      ? categories.listGroups(game.pack).filter(group=>group.questionIds.some(id=>boardIds.has(id))).map(group=>group.id)
+      : game.selectedCategoryIds;
+    const originalGroup=categories.listGroups(game.pack).find(group=>group.questionIds.includes(slot.qid));
+    const sameTag=new Set(originalGroup?.questionIds||[]);
+    const eligible=categories.filterQuestions(game.pack,selected).filter(q=>sameTag.has(q.id));
+    const candidates=eligible.filter(q=>!blocked.has(q.id)&&levels(q).some(level=>{try{return variant(q,level).type===original.type&&variant(q,level).points===original.points;}catch(_){return false;}}));
+    if(!candidates.length)return null;
+    const q=candidates[Math.floor(rngUnit(random)*candidates.length)];
+    const level=levels(q).find(level=>variant(q,level).type===original.type&&variant(q,level).points===original.points);
+    return {qid:q.id,level};
+  }
   function key(packId,questionId){return `${packId}::${questionId}`;}
-  const RULES_VERSION=4;
-  const LEGACY_RULES_VERSIONS=Object.freeze([2,3]);
-  const SUPPORTED_RULES_VERSIONS=Object.freeze([2,3,4]);
+  const RULES_VERSION=5;
+  const LEGACY_RULES_VERSIONS=Object.freeze([2,3,4]);
+  const SUPPORTED_RULES_VERSIONS=Object.freeze([2,3,4,5]);
   /* Rules V2 treated every open question as a race. New games (V3) make
      turns mode strictly sequential: the active player answers both forms.
      Passing rulesVersion 2 explicitly retains the old race semantics for
@@ -317,6 +344,31 @@
     });
     return deltas;
   }
+  function scoreRecord(mode,q,record,count,rulesVersion) {
+    const version=rulesVersionOrThrow(rulesVersion), r=record||{};
+    if(!Array.isArray(r.judgments)||r.judgments.length!==count||!Array.isArray(r.deltas)||r.deltas.length!==count)
+      throw new Error('Invalid scoring record');
+    if(r.pass===true) {
+      if(version<5) throw new Error('Pass unsupported for legacy rules');
+      const ordinary=r.judgments.every(v=>v===null), zero=r.deltas.every(v=>v===0);
+      if(r.passReason==='abandon') {
+        if(mode==='turns'||!Number.isInteger(r.answerer)||!ordinary && r.judgments.filter(v=>v!==null).length!==1)
+          throw new Error('Invalid abandon record');
+        if(r.judgments[r.answerer]!==false||r.judgments.some((v,i)=>i!==r.answerer&&v!==null)) throw new Error('Invalid abandon record');
+        const expected=scoreQuestion(mode,q,r.judgments,r.answerer,count,version);
+        if(expected.some((v,i)=>v!==r.deltas[i])) throw new Error('Score mismatch');
+        return expected;
+      }
+      if(r.passReason!==undefined&&r.passReason!=='pass') throw new Error('Invalid pass record');
+      if(!ordinary||!zero) throw new Error('Invalid pass record');
+      if(isCollective(mode,q) && r.answerer!==null) throw new Error('Invalid pass record');
+      if(mode==='turns' && !Number.isInteger(r.answerer)) throw new Error('Invalid pass record');
+      return Array(count).fill(0);
+    }
+    const expected=scoreQuestion(mode,q,r.judgments,r.answerer,count,version);
+    if(expected.some((v,i)=>v!==r.deltas[i])) throw new Error('Score mismatch');
+    return expected;
+  }
   function scores(game){const totals=Array(game.players.length).fill(0);game.history.filter(h=>!h.voided).forEach(h=>h.deltas.forEach((v,i)=>{totals[i]+=v;}));return totals;}
   function currentPlayer(game){return game.history.filter(h=>!h.voided).length%game.players.length;}
   function googleURL(q,language='en'){
@@ -324,6 +376,6 @@
     const u=new URL('https://www.google.com/search');u.searchParams.set('q',prompt);u.searchParams.set('hl',{en:'en','zh-Hans':'zh-CN','zh-Hant':'zh-TW'}[l]);return u.href;
   }
   function rank(game){const totals=scores(game),rows=game.players.map((name,index)=>({name,index,score:totals[index]})).sort((a,b)=>b.score-a.score||a.index-b.index);rows.forEach((r,i)=>{r.rank=i&&rows[i-1].score===r.score?rows[i-1].rank:i+1;});return rows;}
-  const api={LANGUAGES,POINTS,CHOICE_POINTS,OPEN_POINTS,LEGACY_OPEN_POINTS,MODES,RULES_VERSION,LEGACY_RULES_VERSIONS,SUPPORTED_RULES_VERSIONS,forms,levels,validatePack,normalizePack,variant,allocateBoard,planBoard,drawBoard,validBoard,remaining,key,isRace,isCollective,wrongCost,scoreQuestion,scores,currentPlayer,googleURL,rank};
+  const api={LANGUAGES,POINTS,CHOICE_POINTS,OPEN_POINTS,LEGACY_OPEN_POINTS,MODES,RULES_VERSION,LEGACY_RULES_VERSIONS,SUPPORTED_RULES_VERSIONS,forms,levels,validatePack,normalizePack,variant,allocateBoard,planBoard,drawBoard,validBoard,remaining,replacement,key,isRace,isCollective,wrongCost,scoreQuestion,scoreRecord,scores,currentPlayer,googleURL,rank};
   root.NeoCore=api;if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window==='undefined'?globalThis:window);
