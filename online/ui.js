@@ -593,7 +593,7 @@
         else content = results();
       }
       const offline =
-        room && view === 'room' && !room.hostOnline
+        room && view === 'room' && room.phase !== 'finished' && !room.hostOnline
           ? '<div class="qp-alert">' + escape(t('hostOffline')) + '</div>'
           : '';
       if (
