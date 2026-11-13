@@ -146,6 +146,9 @@
     var correct = players.map(function (p) {
       return { id: p.id, choice: 0, open: 0, total: 0 };
     });
+    var participation = players.map(function (p) {
+      return { id: p.id, answered: 0, passed: 0, missed: 0, turnOpportunities: 0 };
+    });
     history.forEach(function (round) {
       players.forEach(function (p, i) {
         var next = scoreFor(round, p.id);
@@ -155,6 +158,15 @@
         if (answer && answer.correct === true) {
           correct[i][round.type === 'open' ? 'open' : 'choice']++;
           correct[i].total++;
+        }
+        if (answer) {
+          var status = answer.status;
+          if (status === 'answered' || (status === undefined && answer.unanswered === false))
+            participation[i].answered++;
+          else if (status === 'passed') participation[i].passed++;
+          else if (status === 'timeout' || (status === undefined && answer.unanswered === true))
+            participation[i].missed++;
+          if (status !== 'notTurn') participation[i].turnOpportunities++;
         }
       });
     });
@@ -187,6 +199,9 @@
       totals: totals,
       series: series,
       correctCounts: correct,
+      participation: participation,
+      // Named alias for consumers that render the four v2 participation counters.
+      participationCounts: participation,
       durationText: durationText(room, options.language || 'en'),
       axis: axisFor(
         series.map(function (s) {

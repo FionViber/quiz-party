@@ -1,1 +1,1 @@
-window.QuizConfig={"apiBase":"https://quiz-party-api.zacklyx.workers.dev","adminAsset":"admin.enc.js?v=0af1d45fc1ab","storageNamespace":""};
+window.QuizConfig={"apiBase":"https://quiz-party-api-v2.zacklyx.workers.dev","adminAsset":"admin.enc.js?v=0a2132443c82","storageNamespace":""};

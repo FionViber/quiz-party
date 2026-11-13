@@ -5,7 +5,9 @@
     (typeof require === 'function' ? require('../src/player-names.js') : null);
   var MAX_BYTES = 32 * 1024 * 1024,
     MAX_PLAYERS = 32,
-    MAX_QUESTIONS = 96;
+    MAX_QUESTIONS = 96,
+    CURRENT_PROTOCOL = 2,
+    CURRENT_RULES = 2;
   function err(code) {
     var e = new Error(code);
     e.code = code;
@@ -59,12 +61,25 @@
     });
     return ids;
   }
-  function checkAnswer(a, id, type, points, answerIds) {
+  function checkAnswer(a, id, type, points, answerIds, rulesVersion) {
     if (!object(a) || typeof a.playerId !== 'string' || a.playerId !== id) fail('answerPlayer');
     if (typeof a.id !== 'string' || !a.id || a.id.length > 200 || answerIds.has(a.id))
       fail('answerId');
     answerIds.add(a.id);
-    if (
+    if (rulesVersion >= CURRENT_RULES) {
+      if (!['answered', 'passed', 'timeout', 'notTurn'].includes(a.status)) fail('answerStatus');
+      var isAnswered = a.status === 'answered';
+      if (a.unanswered !== !isAnswered || a.correct !== (isAnswered && a.correct === true))
+        fail('answerStatus');
+      var expectedV2 = isAnswered
+        ? a.correct
+          ? points
+          : type === 'open'
+            ? -Math.floor(points / 2)
+            : 0
+        : 0;
+      if (a.delta !== expectedV2) fail('answerDelta');
+    } else if (
       typeof a.unanswered !== 'boolean' ||
       typeof a.correct !== 'boolean' ||
       !Number.isSafeInteger(a.delta)
@@ -77,12 +92,14 @@
         !Number.isInteger(a.votesAgainst) ||
         a.votesFor < 0 ||
         a.votesAgainst < 0 ||
-        a.votesFor + a.votesAgainst > 31
+        a.votesFor + a.votesAgainst > (rulesVersion >= CURRENT_RULES ? 3 : 31)
       )
         fail('votes');
     }
-    var expected = a.correct ? points : type === 'open' ? -Math.floor(points / 2) : 0;
-    if (a.delta !== expected) fail('answerDelta');
+    if (rulesVersion < CURRENT_RULES) {
+      var expected = a.correct ? points : type === 'open' ? -Math.floor(points / 2) : 0;
+      if (a.delta !== expected) fail('answerDelta');
+    }
     if (
       a.text !== undefined &&
       a.text !== null &&
@@ -96,20 +113,24 @@
     )
       fail('option');
   }
-  function checkSettings(s) {
+  function checkSettings(s, rulesVersion) {
     if (
       !object(s) ||
       !Number.isInteger(s.questionCount) ||
       s.questionCount < 1 ||
       s.questionCount > MAX_QUESTIONS ||
-      !['host', 'vote'].includes(s.selection) ||
+      !(rulesVersion >= CURRENT_RULES ? ['host', 'vote', 'turn'] : ['host', 'vote']).includes(
+        s.selection
+      ) ||
       ![30, 60, 120].includes(s.answerSeconds) ||
       !['oral', 'text'].includes(s.openResponse) ||
       !['host', 'vote'].includes(s.grading)
     )
       fail('settings');
+    if (rulesVersion >= CURRENT_RULES && s.selection === 'turn' && s.openResponse !== 'oral')
+      fail('settings');
   }
-  function checkHistory(history, ids, finalScores, questionCount) {
+  function checkHistory(history, ids, finalScores, questionCount, settings, rulesVersion) {
     if (!Array.isArray(history) || history.length > MAX_QUESTIONS || history.length > questionCount)
       fail('history');
     var seen = new Set(),
@@ -149,9 +170,16 @@
       var answerIds = new Set();
       ids.forEach(function (id) {
         if (!own(q.answers, id)) fail('answersMissing');
-        checkAnswer(q.answers[id], id, q.type, q.points, answerIds);
+        checkAnswer(q.answers[id], id, q.type, q.points, answerIds, rulesVersion);
         totals[id] += q.answers[id].delta;
       });
+      if (rulesVersion >= CURRENT_RULES && settings.selection === 'turn') {
+        var turnId = Array.from(ids)[seen.size % ids.size];
+        ids.forEach(function (id) {
+          var status = q.answers[id].status;
+          if (id === turnId ? status === 'notTurn' : status !== 'notTurn') fail('turnStatus');
+        });
+      }
       ids.forEach(function (id) {
         if (!Number.isSafeInteger(q.scores[id]) || q.scores[id] !== totals[id]) fail('subtotal');
       });
@@ -172,14 +200,21 @@
       r.phase !== 'finished'
     )
       fail('record');
-    checkSettings(r.settings);
+    var rulesVersion = r.rulesVersion === undefined ? 1 : r.rulesVersion;
+    if (!Number.isInteger(rulesVersion) || ![1, CURRENT_RULES].includes(rulesVersion))
+      fail('rulesVersion');
+    var protocol = r.protocol === undefined ? 1 : r.protocol;
+    if (!Number.isInteger(protocol) || ![1, CURRENT_PROTOCOL].includes(protocol)) fail('protocol');
+    if (rulesVersion >= CURRENT_RULES && protocol !== CURRENT_PROTOCOL) fail('protocol');
+    if (r.endedByInactivity !== undefined && typeof r.endedByInactivity !== 'boolean') fail('record');
+    checkSettings(r.settings, rulesVersion);
     var ids = checkPlayers(r.players),
       scores = Object.create(null),
       ps = r.players.map(function (p) {
         scores[p.id] = p.score;
         return { id: p.id, name: p.name, score: p.score };
       });
-    checkHistory(r.history, ids, scores, r.settings.questionCount);
+    checkHistory(r.history, ids, scores, r.settings.questionCount, r.settings, rulesVersion);
     if (
       !Number.isFinite(r.startedAt) ||
       !Number.isFinite(r.finishedAt) ||
@@ -200,6 +235,8 @@
           unanswered: x.unanswered,
           correct: x.correct,
           delta: x.delta,
+          ...(rulesVersion >= CURRENT_RULES ? { status: x.status } : {}),
+          ...(x.reviewerId !== undefined ? { reviewerId: x.reviewerId } : {}),
           ...(x.votesFor !== undefined
             ? { votesFor: x.votesFor, votesAgainst: x.votesAgainst }
             : {})
@@ -220,6 +257,8 @@
       };
     });
     return {
+      protocol: rulesVersion >= CURRENT_RULES ? CURRENT_PROTOCOL : protocol,
+      rulesVersion: rulesVersion,
       id: r.id,
       phase: 'finished',
       settings: {
@@ -234,6 +273,7 @@
       startedAt: r.startedAt,
       finishedAt: r.finishedAt,
       durationMs: r.durationMs
+      ,...(r.endedByInactivity ? { endedByInactivity: true } : {})
     };
   }
   function normalize(records, options) {
@@ -268,6 +308,11 @@
         {
           id: String(room.id),
           phase: room.phase,
+          protocol: room.protocol === CURRENT_PROTOCOL ? CURRENT_PROTOCOL : 1,
+          rulesVersion:
+            room.rulesVersion === CURRENT_RULES && room.protocol === CURRENT_PROTOCOL
+              ? CURRENT_RULES
+              : 1,
           settings: room.settings,
           players: raw.map(function (p) {
             return { id: String(p.id), name: p.name, score: p.score };
@@ -275,7 +320,8 @@
           history: room.history || [],
           startedAt: room.startedAt,
           finishedAt: room.finishedAt,
-          durationMs: room.durationMs
+          durationMs: room.durationMs,
+          endedByInactivity: room.endedByInactivity
         }
       ],
       { strict: true }

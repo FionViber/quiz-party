@@ -175,6 +175,9 @@
     }
     function lobby() {
       const me = room.players.find((p) => p.id === room.viewer.id);
+      const count = room.players.length;
+      const planned = room.settings.openResponse === 'oral' && count >= 2
+        ? Math.floor(room.settings.questionCount / count) * count : room.settings.questionCount;
       return (
         '<section class="qp-stage"><div class="qp-stage-top"><div><p class="qp-muted">' +
         escape(t('lobby')) +
@@ -190,9 +193,18 @@
         '</h2><dl class="qp-setting-summary">' +
         [
           ['host', room.hostName || t('host')],
-          ['selection', t(room.settings.selection === 'vote' ? 'voteSelect' : 'hostSelect')],
+          [
+            'selection',
+            t(
+              room.settings.selection === 'turn'
+                ? 'turnSelect'
+                : room.settings.selection === 'vote'
+                  ? 'voteSelect'
+                  : 'hostSelect'
+            )
+          ],
           ['answerTime', room.settings.answerSeconds + ' ' + t('seconds')],
-          ['questionCount', room.settings.questionCount],
+          ['questionCount', room.settings.openResponse === 'oral' && count >= 2 ? t('turnQuestionCount', { total: planned, each: planned / count }) : planned],
           ['openResponse', t(room.settings.openResponse === 'oral' ? 'oral' : 'text')],
           ['grading', t(room.settings.grading === 'vote' ? 'voteGrading' : 'hostGrading')]
         ]
@@ -213,7 +225,9 @@
         escape(t('players')) +
         ' <small>' +
         room.players.length +
-        '/32</small></h2><ul class="qp-player-list">' +
+        '/' +
+        (room.playerLimit || (room.settings.openResponse === 'oral' ? 8 : 32)) +
+        '</small></h2><ul class="qp-player-list">' +
         room.players
           .map(
             (p) =>
@@ -237,7 +251,10 @@
       const voting = room.settings.selection === 'vote',
         hasVotes = room.board.some((tile) => tile.votes > 0);
       const canVote = voting && !room.selectionClosed && room.viewer.isPlayer;
-      const canSelect = room.viewer.isHost && (!voting || (room.selectionClosed && !hasVotes));
+      const canSelect =
+        (room.viewer.isHost ||
+          (room.settings.selection === 'turn' && room.viewer.id === room.turnPlayerId)) &&
+        (!voting || (room.selectionClosed && !hasVotes));
       return (
         '<section class="qp-stage"><div class="qp-stage-top"><div><h1>' +
         escape(t(voting ? 'voteQuestion' : 'chooseQuestion')) +
@@ -248,7 +265,10 @@
               ? room.selectionClosed
                 ? 'votesClosed'
                 : 'voteQuestionHint'
-              : 'hostQuestionHint'
+              : room.settings.selection === 'turn'
+                ? 'turnQuestionHint'
+                : 'hostQuestionHint',
+            { name: name(room.turnPlayerId) }
           )
         ) +
         '</p></div>' +
@@ -278,7 +298,7 @@
               '</small></strong><span class="qp-tile-tags"><span>' +
               escape(t(tile.type === 'choice' ? 'choiceType' : 'openType')) +
               '</span><span>' +
-              escape(t('everyone')) +
+              escape(t(room.settings.openResponse === 'oral' ? 'turnParticipation' : 'everyone')) +
               '</span></span>' +
               '<span class="qp-tile-category">' +
               escape(localized(tile.tag, language)) +
@@ -302,283 +322,20 @@
         '</p></section>'
       );
     }
-    function prompt() {
-      const c = room.current;
-      return (
-        '<article class="qp-question" data-type="' +
-        c.type +
-        '"><div class="qp-question-meta"><span>' +
-        escape(t(c.type === 'choice' ? 'choiceType' : 'openType')) +
-        '</span><span>' +
-        escape(t('everyone')) +
-        '</span><strong>' +
-        c.points +
-        ' ' +
-        escape(t('points')) +
-        '</strong></div>' +
-        '<div class="qp-prompt-languages">' +
-        languages
-          .map(
-            (l) =>
-              '<section lang="' +
-              l +
-              '"><small>' +
-              languageNames[l] +
-              '</small><p class="qp-question-prompt">' +
-              escape(localized(c.prompt, l)) +
-              '</p></section>'
-          )
-          .join('') +
-        '</div></article>'
-      );
-    }
-    function standardAnswer() {
-      const answer = room.current?.standardAnswer;
-      if (!answer) return '';
-      return (
-        '<article class="qp-question qp-standard"><h2>' +
-        escape(t('reveal')) +
-        '</h2><div class="qp-prompt-languages">' +
-        languages
-          .map((l) => {
-            const value = answer[l] || answer.en || {},
-              answerText = typeof value === 'string' ? value : value.answer || '';
-            const accepted = Array.isArray(value.acceptedAnswers)
-              ? value.acceptedAnswers.filter((x) => x !== answerText)
-              : [];
-            return (
-              '<section lang="' +
-              l +
-              '"><small>' +
-              languageNames[l] +
-              '</small><p class="qp-question-prompt">' +
-              escape(answerText) +
-              '</p>' +
-              (accepted.length
-                ? '<p class="qp-accepted">' + escape(accepted.join(' / ')) + '</p>'
-                : '') +
-              '</section>'
-            );
-          })
-          .join('') +
-        '</div></article>'
-      );
-    }
-    function answering() {
-      const c = room.current,
-        me = room.viewer,
-        oral = c.type === 'open' && room.settings.openResponse === 'oral';
-      const editable = me.isPlayer && !me.submitted && room.phase === 'answering' && !oral && !busy;
-      let response = '';
-      if (oral) {
-        response =
-          '<article class="qp-card"><h2>' +
-          escape(t(room.phase === 'oral' ? 'oral' : 'thinking')) +
-          '</h2><p>' +
-          escape(t(room.phase === 'oral' ? 'oralOrderHint' : 'oralThinkHint')) +
-          '</p>';
-        if (room.phase === 'oral')
-          response +=
-            '<p class="qp-speaker">' +
-            escape(name(c.oralPlayerId)) +
-            '</p>' +
-            (me.isHost
-              ? '<div class="qp-btn-row">' +
-                button('oral-mark', t('markAnswered'), {}, 'primary') +
-                button('oral-skip', t('skip')) +
-                '</div>'
-              : '');
-        response += '</article>';
-      } else {
-        if (c.type === 'choice') {
-          response =
-            '<div class="qp-options">' +
-            c.options
-              .map(
-                (o, i) =>
-                  '<button type="button" class="qp-option ' +
-                  ((selectedOption || c.mySubmission?.optionId) === o.id ? 'selected' : '') +
-                  '" data-qpa="option" data-option="' +
-                  escape(o.id) +
-                  '" data-option-index="' +
-                  (i + 1) +
-                  '" data-focus-key="option:' +
-                  escape(o.id) +
-                  '"' +
-                  (!editable ? ' disabled' : '') +
-                  ' aria-pressed="' +
-                  ((selectedOption || c.mySubmission?.optionId) === o.id) +
-                  '"><strong>' +
-                  (i + 1) +
-                  '.</strong> ' +
-                  escape(localized(o.labels, language)) +
-                  '</button>'
-              )
-              .join('') +
-            '</div>';
-        } else if (me.isPlayer) {
-          response =
-            '<label class="qp-label" for="qp-answer">' +
-            escape(t('yourAnswer')) +
-            '</label><textarea class="qp-field qp-answer-input" id="qp-answer" rows="4" maxlength="1000"' +
-            (!editable ? ' disabled' : '') +
-            '>' +
-            escape(c.mySubmission?.text ?? answerDraft) +
-            '</textarea><p class="qp-muted">' +
-            escape(t('answerLimit')) +
-            ' <span data-answer-count>' +
-            [...answerDraft.normalize('NFC').trim()].length +
-            '/500</span></p>';
-        }
-        response +=
-          '<div class="qp-btn-row">' +
-          (editable
-            ? button(
-                'submit',
-                t('submit'),
-                {
-                  disabled:
-                    busy ||
-                    (c.type === 'choice'
-                      ? !selectedOption
-                      : !answerDraft.trim() ||
-                        [...answerDraft.normalize('NFC').trim()].length > 500)
-                },
-                'primary'
-              )
-            : '<strong>' +
-              escape(t(me.submitted ? 'lockedAnswer' : 'waitingAnswers')) +
-              '</strong>') +
-          '</div>';
-      }
-      return (
-        '<section class="qp-stage"><div class="qp-stage-top"><h1>' +
-        escape(t('questionNumber', { n: c.number })) +
-        '</h1>' +
-        (c.deadlineAt
-          ? '<strong class="qp-timer" data-deadline="' + c.deadlineAt + '"></strong>'
-          : '') +
-        '<span>' +
-        c.submittedCount +
-        ' / ' +
-        room.players.length +
-        ' ' +
-        escape(t('submitted')) +
-        '</span><div class="qp-btn-row">' +
-        controls() +
-        '</div></div>' +
-        prompt() +
-        response +
-        '</section>'
-      );
-    }
-    function grading() {
-      const c = room.current,
-        me = room.viewer,
-        answers = c.answers || [],
-        total = Math.max(1, Math.ceil(answers.length / 8));
-      gradePage = Math.max(0, Math.min(gradePage, total - 1));
-      const voting = room.settings.grading === 'vote' && room.phase === 'grading';
-      const eligible = voting && me.isPlayer && !me.gradeSubmitted && room.hostOnline;
-      const cards = answers
-        .slice(gradePage * 8, gradePage * 8 + 8)
-        .map((a) => {
-          const own = a.playerId === me.id,
-            decided = a.correct !== null && a.correct !== undefined;
-          let actions = '';
-          if (!a.unanswered && !decided) {
-            if (room.phase === 'review' && a.reviewerId === me.id && room.hostOnline) {
-              actions =
-                button('review', t('correct'), { answer: a.id, correct: true }, 'small') +
-                button('review', t('incorrect'), { answer: a.id, correct: false }, 'small');
-            } else if (
-              room.phase === 'grading' &&
-              room.settings.grading === 'host' &&
-              me.isHost &&
-              !own
-            ) {
-              actions =
-                button('judge', t('correct'), { answer: a.id, correct: true }, 'small') +
-                button('judge', t('incorrect'), { answer: a.id, correct: false }, 'small');
-            } else if (eligible && !own) {
-              actions =
-                button(
-                  'ballot',
-                  t('correct'),
-                  { answer: a.id, correct: true, 'aria-pressed': ballot.get(a.id) === true },
-                  ballot.get(a.id) === true ? 'small primary' : 'small'
-                ) +
-                button(
-                  'ballot',
-                  t('incorrect'),
-                  { answer: a.id, correct: false, 'aria-pressed': ballot.get(a.id) === false },
-                  ballot.get(a.id) === false ? 'small primary' : 'small'
-                );
-            }
-          }
-          const status = a.unanswered
-            ? t('unanswered')
-            : decided
-              ? t(a.correct ? 'correct' : 'incorrect')
-              : own && voting
-                ? t('ownAnswer')
-                : a.reviewerId
-                  ? t('reviewBy', { name: name(a.reviewerId) })
-                  : t('notGraded');
-          return (
-            '<article class="qp-answer"><div class="qp-answer-head"><strong>' +
-            escape(name(a.playerId)) +
-            '</strong><span>' +
-            escape(status) +
-            '</span></div>' +
-            '<p class="qp-answer-text">' +
-            escape(a.unanswered ? t('timeoutAnswer') : a.text || t('oralRecorded')) +
-            '</p>' +
-            (a.votesFor !== null && a.votesFor !== undefined
-              ? '<p class="qp-muted">' +
-                escape(t('voteTally', { yes: a.votesFor, no: a.votesAgainst })) +
-                '</p>'
-              : '') +
-            '<div class="qp-btn-row">' +
-            actions +
-            '</div></article>'
-          );
-        })
-        .join('');
-      return (
-        '<section class="qp-stage"><div class="qp-stage-top"><h1>' +
-        escape(t(room.phase === 'review' ? 'review' : 'grading')) +
-        '</h1>' +
-        (voting
-          ? '<span>' +
-            c.gradingSubmittedCount +
-            ' / ' +
-            room.players.length +
-            ' ' +
-            escape(t('votesSubmitted')) +
-            '</span>'
-          : '') +
-        '</div>' +
-        standardAnswer() +
-        '<p>' +
-        escape(t(voting ? 'voteGradeHint' : 'hostGradeHint')) +
-        '</p><div class="qp-answer-list">' +
-        cards +
-        '</div>' +
-        pageControls(gradePage, total, 'grade-page') +
-        '<div class="qp-btn-row">' +
-        (eligible
-          ? button('all-correct', t('allCorrect')) +
-            button('all-wrong', t('allWrong')) +
-            button('submit-votes', t('submitVotes'), {}, 'primary')
-          : '') +
-        (me.gradeSubmitted && voting ? '<strong>' + escape(t('votesLocked')) + '</strong>' : '') +
-        controls() +
-        '</div></section>'
-      );
-    }
-    function results(source = room) {
-      const summary = root.QuizResults.summary(source, { language }),
+    const roundViews = root.QuizRoundViews.create({
+      t,
+      escape,
+      button,
+      name,
+      controls,
+      pageControls,
+      getRoom: () => room,
+      getLanguage: () => language,
+      getDraft: () => ({ answerDraft, selectedOption, ballot, busy })
+    });
+    function results(source = room, live = false) {
+      const display = live && source.startedAt ? { ...source, durationMs: Math.max(0, clockSync.server + performance.now() - source.startedAt) } : source;
+      const summary = root.QuizResults.summary(display, { language }),
         final = source.phase === 'finished',
         readonly = source === archiveRoom;
       return (
@@ -587,34 +344,18 @@
         ' · ' +
         escape(t('builtin')) +
         '</p><h1>' +
-        escape(t(final ? 'finalResults' : 'roundResults')) +
+        escape(t(final ? 'finalResults' : 'currentScores')) +
         '</h1></div><strong>' +
         escape(t('duration')) +
         ' ' +
         escape(summary.durationText) +
         '</strong></div>' +
-        (!readonly && source.current ? standardAnswer() : '') +
-        (!readonly && source.current
-          ? '<div class="qp-round-verdicts">' +
-            source.current.answers
-              .map(
-                (a) =>
-                  '<article class="qp-answer"><strong>' +
-                  escape(name(a.playerId)) +
-                  '</strong><span>' +
-                  escape(t(a.correct ? 'correct' : 'incorrect')) +
-                  ' ' +
-                  (a.delta > 0 ? '+' : '') +
-                  a.delta +
-                  '</span>' +
-                  (a.votesFor !== null && a.votesFor !== undefined
-                    ? '<small>' +
-                      escape(t('voteTally', { yes: a.votesFor, no: a.votesAgainst })) +
-                      '</small>'
-                    : '') +
-                  '</article>'
-              )
-              .join('') +
+        (final && source.endedByInactivity ? '<p class="qp-alert">' + escape(t('inactivityResult')) + '</p>' : '') +
+        (live
+          ? '<p class="qp-alert">' +
+            escape(t('liveScoresHint')) +
+            '</p><div class="qp-btn-row">' +
+            button('back-to-room', t('backToRoom')) +
             '</div>'
           : '') +
         '<article class="qp-card"><h2>' +
@@ -674,15 +415,42 @@
             );
           })
           .join('') +
-        '</div></article><p>' +
+        '</div></article>' +
+        (source.rulesVersion >= 2
+          ? '<article class="qp-card"><h2>' +
+            escape(t('participationSummary')) +
+            '</h2><div class="qp-participation-grid">' +
+            summary.participation
+              .map(
+                (p) =>
+                  '<section class="qp-participation"><strong>' +
+                  escape(source.players.find((player) => player.id === p.id)?.name) +
+                  '</strong><dl>' +
+                  [
+                    ['opportunities', p.turnOpportunities],
+                    ['answeredCount', p.answered],
+                    ['passedCount', p.passed],
+                    ['missedCount', p.missed]
+                  ]
+                    .map(
+                      ([key, value]) =>
+                        '<div><dt>' + escape(t(key)) + '</dt><dd>' + value + '</dd></div>'
+                    )
+                    .join('') +
+                  '</dl></section>'
+              )
+              .join('') +
+            '</div></article>'
+          : '') +
+        '<p>' +
         escape(
           t('scoredCount', { n: source.history.length, total: source.settings.questionCount })
         ) +
         '</p>' +
         '<div class="qp-btn-row" data-export-hide>' +
         button('export-results', t('exportImage'), {}, 'primary') +
-        (readonly ? button('history', t('back')) : controls()) +
-        button('home', t('returnHome')) +
+        (live ? '' : readonly ? button('history', t('back')) : controls()) +
+        (live ? '' : button('home', t('returnHome'))) +
         '</div></section>'
       );
     }
@@ -784,7 +552,9 @@
         room?.current?.id,
         archiveRoom?.id,
         view === 'history' ? historyPage : null,
-        view === 'room' && ['grading', 'review'].includes(room?.phase) ? gradePage : null
+        view === 'room' && ['grading', 'review', 'scoreReview', 'results'].includes(room?.phase)
+          ? gradePage
+          : null
       ]);
       const screenChanged = screen !== renderedScreen;
       renderedScreen = screen;
@@ -810,17 +580,32 @@
           '</section>';
       else if (view === 'history') content = historyView();
       else if (view === 'archive') content = results(archiveRoom);
+      else if (view === 'standings') content = results(room, true);
       else if (room) {
         if (room.phase === 'lobby') content = lobby();
         else if (room.phase === 'selecting') content = board();
-        else if (['answering', 'oral'].includes(room.phase)) content = answering();
-        else if (['grading', 'review'].includes(room.phase)) content = grading();
+        else if (room.phase === 'briefing') content = roundViews.briefing();
+        else if (room.phase === 'answering') content = roundViews.answering();
+        else if (['grading', 'review'].includes(room.phase))
+          content = roundViews.grading(gradePage);
+        else if (['scoreReview', 'results'].includes(room.phase))
+          content = roundViews.roundResults(gradePage);
         else content = results();
       }
       const offline =
         room && view === 'room' && !room.hostOnline
           ? '<div class="qp-alert">' + escape(t('hostOffline')) + '</div>'
           : '';
+      if (
+        view === 'room' &&
+        room?.phase !== 'finished' &&
+        room?.history?.length &&
+        (['selecting', 'briefing', 'results'].includes(room.phase) || !room.hostOnline)
+      )
+        content +=
+          '<div class="qp-btn-row qp-bottom-actions">' +
+          button('show-scores', t('showScores')) +
+          '</div>';
       main.innerHTML =
         (notice
           ? '<div class="qp-alert ' +
@@ -930,19 +715,13 @@
         return;
       }
       const previous = app.getSession?.();
-      if (previous?.code === joinDraft.code) {
-        if (previous.isHost && !app.isAdmin() && !(await app.requestUnlock())) return;
-        view = 'connecting';
-        render();
-        app.connect(previous);
-        return;
-      }
+      const sameRoom = previous?.code === joinDraft.code;
       if (
         previous &&
         previous.phase !== 'finished' &&
         !(await app.confirm(
-          t('replaceRoomTitle'),
-          t('replaceRoomDescription', { code: previous.code })
+          t(sameRoom ? 'newIdentityTitle' : 'replaceRoomTitle'),
+          t(sameRoom ? 'newIdentityDescription' : 'replaceRoomDescription', { code: previous.code })
         ))
       )
         return;
@@ -960,6 +739,17 @@
       });
     }
     async function handle(action, element) {
+      const expected = { roomId: room?.id, roundId: room?.current?.id, selectionId: room?.selectionId };
+      if (action === 'show-scores' && room?.history.length) {
+        view = 'standings';
+        render();
+        return;
+      }
+      if (action === 'back-to-room') {
+        view = 'room';
+        render();
+        return;
+      }
       if (action === 'home' || action === 'leave') return home();
       if (action === 'language') {
         language = languages[(languages.indexOf(language) + 1) % languages.length];
@@ -1065,11 +855,12 @@
           room?.phase !== 'grading' ||
           room.settings.grading !== 'vote' ||
           room.viewer.gradeSubmitted ||
-          !room.hostOnline
+          room.current.gradingClosed
         )
           return;
+        const assigned = new Set(room.viewer.reviewAnswerIds || []);
         for (const answer of room.current.answers)
-          if (!answer.unanswered && answer.playerId !== room.viewer.id && answer.correct === null)
+          if (assigned.has(answer.id) && !answer.unanswered && answer.correct === null)
             ballot.set(answer.id, action === 'all-correct');
         render();
         return;
@@ -1083,7 +874,34 @@
       )
         return;
       if (action === 'host-finish' && !(await app.confirm(t('finish'), t('finishConfirm')))) return;
-      if (action === 'host-reopen' && !(await app.confirm(t('reopenGrading'), t('reopenConfirm'))))
+      if (
+        action === 'host-review-answer' &&
+        !(await app.confirm(t('reviewThisAnswer'), t('reviewAnswerConfirm')))
+      )
+        return;
+      if (
+        action === 'host-void' &&
+        !(await app.confirm(t('voidQuestion'), t('voidQuestionConfirm')))
+      )
+        return;
+      if (action === 'pass' && !(await app.confirm(t('passQuestion'), t('passConfirm')))) return;
+      if (
+        action === 'host-close-grading' &&
+        !(await app.confirm(
+          t('closeGrading'),
+          t('closeGradingConfirm', {
+            n: Math.max(
+              0,
+              (room.current.eligibleReviewerCount || 0) - room.current.gradingSubmittedCount
+            )
+          })
+        ))
+      )
+        return;
+      if (
+        action === 'host-close-selection' &&
+        !(await app.confirm(t('closeSelection'), t('closeSelectionConfirm')))
+      )
         return;
       const messages = {
         ready: () => [
@@ -1101,7 +919,10 @@
           room.current.type === 'choice' ? { optionId: selectedOption } : { text: answerDraft }
         ],
         'oral-mark': () => ['oralMark', { playerId: room.current.oralPlayerId, answered: true }],
-        'oral-skip': () => ['oralMark', { playerId: room.current.oralPlayerId, answered: false }],
+        pass: () => [
+          'pass',
+          { playerId: room.settings.openResponse === 'oral' ? room.turnPlayerId : room.viewer.id }
+        ],
         judge: () => [
           'judge',
           { answerId: element.dataset.answer, correct: element.dataset.correct === 'true' }
@@ -1116,8 +937,8 @@
         ],
         kick: () => ['kick', { playerId: element.dataset.player }]
       };
-      if (messages[action]) return work(() => app.send(...messages[action]()));
-      if (action.startsWith('host-')) return work(() => app.handleAdminAction(action, element));
+      if (messages[action]) return work(() => app.send(...messages[action](), expected));
+      if (action.startsWith('host-')) return work(() => app.handleAdminAction(action, element, expected));
     }
     shell.addEventListener('click', (event) => {
       const element = event.target.closest('[data-qpa]');
@@ -1184,12 +1005,19 @@
         setup.categories = [...main.querySelectorAll('[data-qpc]:checked')].map(
           (x) => x.dataset.qpc
         );
+      if (input.id === 'qp-open') render();
     });
     const api = {
       setState(next) {
         const previousRound = room?.current?.id;
+        const previousPhase = room?.phase;
+        const keepStandings =
+          view === 'standings' &&
+          next?.id === room?.id &&
+          next?.phase === room?.phase &&
+          (room?.hostOnline || !next?.hostOnline);
         room = next ? clone(next) : null;
-        view = room ? 'room' : 'entry';
+        view = room ? (keepStandings ? 'standings' : 'room') : 'entry';
         notice = null;
         if (room) {
           clockSync = { server: room.serverNow, client: performance.now() };
@@ -1202,6 +1030,10 @@
           if (room.current?.mySubmission) {
             selectedOption = room.current.mySubmission.optionId;
             answerDraft = room.current.mySubmission.text || '';
+          }
+          if (room.phase === 'scoreReview' && !room.viewer.isHost && (previousPhase !== 'scoreReview' || previousRound !== room.current?.id)) {
+            const ownIndex = (room.current?.answers || []).filter(a => a.status !== 'notTurn').findIndex(a => a.playerId === room.viewer.id);
+            gradePage = Math.max(0, Math.floor(ownIndex / 8));
           }
           if (room.phase === 'finished') app.saveOnlineHistory(room);
         }
