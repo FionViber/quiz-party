@@ -166,9 +166,7 @@
           else if (status === 'passed') participation[i].passed++;
           else if (status === 'timeout' || (status === undefined && answer.unanswered === true))
             participation[i].missed++;
-          if (round.selection === 'turn' || room.settings?.selection === 'turn') {
-            if (status !== 'notTurn') participation[i].turnOpportunities++;
-          }
+          if (status !== 'notTurn') participation[i].turnOpportunities++;
         }
       });
     });
