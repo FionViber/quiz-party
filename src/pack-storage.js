@@ -9,7 +9,7 @@
 (function (root) {
   'use strict';
 
-  const DB_NAME = 'quizparty.packs.v58';
+  const DB_NAME = 'quizparty.packs.v58' + (root.NeoStorageNamespace ? '.' + root.NeoStorageNamespace : '');
   const STORE_NAME = 'state';
   const RECORD_KEY = 'imports';
   const GAME_PACK_KEY = 'game-pack';

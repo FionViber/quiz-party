@@ -30,6 +30,8 @@ def package(output: Path) -> None:
     for name in ('html2canvas.min.js', 'html2canvas.LICENSE'):
         shutil.copy2(ROOT / 'src/vendor' / name, output / 'assets/vendor' / name)
     shutil.copy2(ROOT / 'docs/题库来源与许可.txt', output / 'docs/题库来源与许可.txt')
+    if (ROOT / 'docs/PageCrypt-LICENSE.txt').is_file():
+        shutil.copy2(ROOT / 'docs/PageCrypt-LICENSE.txt', output / 'docs/PageCrypt-LICENSE.txt')
     about = (ROOT / 'README.html').read_text(encoding='utf-8').replace('src/vendor/html2canvas.LICENSE', 'assets/vendor/html2canvas.LICENSE')
     (output / 'README.html').write_text(about, encoding='utf-8')
 

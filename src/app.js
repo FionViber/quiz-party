@@ -3,8 +3,9 @@
   'use strict';
   const C = window.NeoCore, DICT = window.NeoI18n, audio = window.NeoAudio, Archive = window.NeoArchive, Stats = window.NeoStats, ResultsHistory = window.NeoResultsHistory, Cache = window.NeoCache, ImportErrors = window.NeoImportErrors;
   const Names = window.NeoPlayerNames, Categories=window.NeoCategoryFilter, Clock=window.NeoGameClock, Motion=window.NeoMotion;
-  const STORAGE = 'quizparty.release.v58';
-  const HIDDEN_STORAGE = 'quizparty.hidden.v58';
+  const storageSuffix = window.NeoStorageNamespace ? '.' + window.NeoStorageNamespace : '';
+  const STORAGE = 'quizparty.release.v58' + storageSuffix;
+  const HIDDEN_STORAGE = 'quizparty.hidden.v58' + storageSuffix;
   const LANG_NAMES = {en: 'English', 'zh-Hans': '简体中文', 'zh-Hant': '繁體中文'};
   const SHORT_NAMES = {en: 'EN', 'zh-Hans': '简中', 'zh-Hant': '繁中'};
   const icons = {
@@ -38,7 +39,7 @@
   let cachedGamePacks=validPacks(reads[1].status==='fulfilled'?reads[1].value:[]);
   let packs = [...builtins.filter(p => !imported.some(a => a.id === p.id)), ...imported];
   const state = {
-    lang: C.LANGUAGES.includes(saved.lang) ? saved.lang : 'zh-Hans',
+    lang: C.LANGUAGES.includes(window.NeoInitialLanguage) ? window.NeoInitialLanguage : (C.LANGUAGES.includes(saved.lang) ? saved.lang : 'zh-Hans'),
     prefs: {sfx: saved.prefs?.sfx !== false, music: saved.prefs?.music === true, reduced: saved.prefs?.reduced === true},
     activePack: packs.some(p => p.id === saved.activePack) ? saved.activePack : packs[0]?.id,
     hidden: saved.hidden && typeof saved.hidden === 'object' && !Array.isArray(saved.hidden) ? saved.hidden : (saved.deleted && typeof saved.deleted === 'object' && !Array.isArray(saved.deleted) ? saved.deleted : {}),

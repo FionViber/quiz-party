@@ -1,0 +1,43 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "quiz-party-api",
+  "main": "index.mjs",
+  "compatibility_date": "2026-11-13",
+  "workers_dev": true,
+  "observability": {
+    "enabled": false
+  },
+  "vars": {
+    "ALLOWED_ORIGINS": "https://fionviber.github.io",
+    "ADMIN_PUBLIC_JWK": "{\"key_ops\":[\"verify\"],\"ext\":true,\"kty\":\"EC\",\"x\":\"2AuHW8E2mSG67Hy8aBHZVIX1Mt4DouuxpKGnOBv3OUI\",\"y\":\"TnqeVULUYTPuLcG-tbpkBdG6pd7UuSlEwtr6WT3EbIw\",\"crv\":\"P-256\"}"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ROOMS",
+        "class_name": "QuizRoom"
+      },
+      {
+        "name": "GATE",
+        "class_name": "AccessGate"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "QuizRoom",
+        "AccessGate"
+      ]
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "quiz-party",
+      "database_id": "8cc321fb-e637-4ce4-929c-0988a42e1cd7",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

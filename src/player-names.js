@@ -17,7 +17,7 @@
       if (result.length + part.length > 120) break;
       result += part;
     }
-    return result;
+    return trim ? result.trim() : result;
   }
   const api = {LIMIT, normalize};
   if (typeof module === 'object' && module.exports) module.exports = api;

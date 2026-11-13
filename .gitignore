@@ -5,3 +5,10 @@ tests/
 work/
 dist/
 data/builtin.js
+node_modules/
+.wrangler/
+.dev.vars
+.env*
+dist-online/
+private/
+qa/
