@@ -5,7 +5,7 @@ function n(v,f=0){const x=Number.parseFloat(v);return Number.isFinite(x)?x:f;}
 function attr(el,name,f=0){return n(el.getAttribute(name),f);}
 function chartCanvas(svg,doc){
   const vb=(svg.getAttribute('viewBox')||`0 0 ${svg.clientWidth||640} ${svg.clientHeight||320}`).trim().split(/\s+/).map(Number),vw=vb[2]||640,vh=vb[3]||320;
-  const width=Math.max(1,Math.round(svg.clientWidth||vw)),height=Math.max(1,Math.round(svg.clientHeight||vh)),scale=width/vw,canvas=doc.createElement('canvas');canvas.width=Math.round(width*2);canvas.height=Math.round(height*2);
+  const width=Math.max(1,Math.round(vw)),height=Math.max(1,Math.round(vh)),canvas=doc.createElement('canvas');canvas.width=Math.round(width*2);canvas.height=Math.round(height*2);
   const ctx=canvas.getContext('2d'),fit=Math.min(width/vw,height/vh),offsetX=(width-vw*fit)/2,offsetY=(height-vh*fit)/2;ctx.fillStyle=getComputedStyle(svg).backgroundColor||'transparent';if(ctx.fillStyle!=='transparent')ctx.fillRect(0,0,canvas.width,canvas.height);ctx.scale(2,2);ctx.translate(offsetX,offsetY);ctx.scale(fit,fit);
   const lineStyle=(el)=>{const cs=getComputedStyle(el);ctx.strokeStyle=el.getAttribute('stroke')||cs.stroke||'#000';ctx.fillStyle=el.getAttribute('fill')||cs.fill||'none';ctx.lineWidth=n(el.getAttribute('stroke-width'),n(cs.strokeWidth,1));};
   const walk=(el)=>{for(const child of Array.from(el.children||[])){const tag=child.localName;lineStyle(child);if(tag==='line'){ctx.beginPath();ctx.moveTo(attr(child,'x1'),attr(child,'y1'));ctx.lineTo(attr(child,'x2'),attr(child,'y2'));ctx.stroke();}else if(tag==='rect'){ctx.fillRect(attr(child,'x'),attr(child,'y'),attr(child,'width'),attr(child,'height'));if(child.getAttribute('stroke'))ctx.strokeRect(attr(child,'x'),attr(child,'y'),attr(child,'width'),attr(child,'height'));}else if(tag==='circle'){ctx.beginPath();ctx.arc(attr(child,'cx'),attr(child,'cy'),attr(child,'r'),0,Math.PI*2);ctx.fill();if(child.getAttribute('stroke'))ctx.stroke();}else if(tag==='polyline'||tag==='polygon'){const points=(child.getAttribute('points')||'').trim().split(/[ ,]+/).map(Number);if(points.length>=4){ctx.beginPath();ctx.moveTo(points[0],points[1]);for(let i=2;i+1<points.length;i+=2)ctx.lineTo(points[i],points[i+1]);if(tag==='polygon')ctx.closePath();ctx.stroke();if(tag==='polygon')ctx.fill();}}else if(tag==='text'){const cs=getComputedStyle(child);ctx.fillStyle=child.getAttribute('fill')||cs.fill||'#000';ctx.font=`${cs.fontWeight||400} ${n(cs.fontSize,12)}px ${cs.fontFamily||'sans-serif'}`;ctx.textAlign=child.getAttribute('text-anchor')==='middle'?'center':child.getAttribute('text-anchor')==='end'?'right':'left';ctx.textBaseline='alphabetic';ctx.fillText(child.textContent||'',attr(child,'x'),attr(child,'y'));}walk(child);}};
@@ -31,7 +31,7 @@ async function renderElementToPng(element,{scale=1,background='#fff'}={}) {
       // on local-file launches. Canvas pixels are already present at clone time.
       const bitmap=clonedDoc.createElement('canvas');bitmap.className=svg.getAttribute('class')||'results-graphic';
       bitmap.width=source.width;bitmap.height=source.height;bitmap.setAttribute('role','img');bitmap.setAttribute('aria-label',svg.getAttribute('aria-label')||'');
-      bitmap.style.width=`${svg.clientWidth||640}px`;bitmap.style.height=`${svg.clientHeight||320}px`;
+      bitmap.style.width='100%';bitmap.style.height='100%';
       const target=bitmap.getContext('2d');if(target)target.drawImage(source,0,0);
       svg.replaceWith(bitmap);
     });
