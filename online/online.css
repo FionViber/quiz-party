@@ -2,7 +2,7 @@
   font-family: 'Source Han Sans';
   src: url('../assets/fonts/SourceHanSansSC-VF.ttf.woff2') format('woff2');
   font-weight: 250 900;
-  font-display: block;
+  font-display: swap;
 }
 :root {
   --ink: #000;
@@ -893,4 +893,21 @@ html[data-input='keyboard'] .qp-tile.qp-key-selected {
   .qp-tile-category {
     font-size: 14px;
   }
+}
+
+/* Short landscape phones and small tablets keep the question readable while
+   using the available width. Do not force portrait or hide the page behind an
+   orientation gate. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .qp-online { padding: 0 18px 20px; }
+  .qp-online-header { padding: 8px 0; margin-bottom: 12px; }
+  .qp-online-header-actions { gap: 8px; }
+  .qp-card, .qp-question { padding: 16px; }
+  .qp-question-prompt { font-size: 30px; line-height: 1.35; }
+  .qp-question { min-height: 0; }
+  .qp-options { gap: 8px; }
+  .qp-option { min-height: 48px; font-size: 22px; }
+  .qp-score-canvas { height: 210px; }
+  .qp-stage-top { gap: 10px; }
+  .qp-stage-top h1 { font-size: 30px; }
 }

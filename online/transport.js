@@ -10,19 +10,33 @@
     'CLIENT_UPDATE_REQUIRED'
   ]);
   async function api(path, options = {}) {
+    const safeRead = !options.method || options.method === 'GET';
+    for (let attempt = 0; ; attempt++) {
+      try { return await request(path, options); }
+      catch (error) {
+        if (!safeRead || attempt >= 1 || options.signal?.aborted ||
+            !['SERVICE_UNAVAILABLE', 'SERVICE_TIMEOUT'].includes(error.code)) throw error;
+      }
+    }
+  }
+  async function request(path, options) {
     const controller = new AbortController(),
       timer = setTimeout(() => controller.abort(), 15000);
+    const cancel = () => controller.abort();
+    options.signal?.addEventListener('abort', cancel, { once: true });
+    if (options.signal?.aborted) controller.abort();
     try {
       const response = await fetch(apiBase() + path, {
         ...options,
-        signal: options.signal || controller.signal,
-        headers: { 'Content-Type': 'application/json', ...options.headers },
+        signal: controller.signal,
+        headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers },
         cache: 'no-store'
       });
       let data;
       try {
         data = await response.json();
-      } catch {
+      } catch (error) {
+        if (controller.signal.aborted) throw error;
         throw Object.assign(new Error('SERVICE_UNAVAILABLE'), { code: 'SERVICE_UNAVAILABLE' });
       }
       if (!response.ok)
@@ -33,9 +47,13 @@
       return data;
     } catch (error) {
       if (error.code) throw error;
-      throw Object.assign(new Error('SERVICE_UNAVAILABLE'), { code: 'SERVICE_UNAVAILABLE' });
+      const code = options.signal?.aborted ? 'REQUEST_CANCELLED'
+        : root.navigator?.onLine === false ? 'NETWORK_OFFLINE'
+        : controller.signal.aborted ? 'SERVICE_TIMEOUT' : 'SERVICE_UNAVAILABLE';
+      throw Object.assign(new Error(code), { code });
     } finally {
       clearTimeout(timer);
+      options.signal?.removeEventListener('abort', cancel);
     }
   }
   function connect(
@@ -51,6 +69,7 @@
       stopped = false,
       attempt = 0,
       retryTimer,
+      handshakeTimer,
       heartbeat,
       lastSeen = Date.now(),
       generation = 0;
@@ -71,6 +90,7 @@
       stopped = true;
       generation++;
       clearTimeout(retryTimer);
+      clearTimeout(handshakeTimer);
       clearInterval(heartbeat);
       root.removeEventListener('online', online);
       document.removeEventListener('visibilitychange', visible);
@@ -92,6 +112,7 @@
     function reconnect() {
       if (stopped) return;
       generation++;
+      clearTimeout(handshakeTimer);
       clearInterval(heartbeat);
       for (const item of pending.values()) clearTimeout(item.ackTimer);
       if (socket) {
@@ -125,6 +146,7 @@
       if (stopped) return;
       const run = ++generation;
       clearInterval(heartbeat);
+      clearTimeout(handshakeTimer);
       onStatus('connecting');
       try {
         const admin = session.isHost ? await adminToken() : '';
@@ -149,11 +171,13 @@
           socket.close();
         }
         socket = next;
+        handshakeTimer = setTimeout(() => {
+          if (run === generation && !stopped) reconnect();
+        }, 15000);
         next.onopen = () => {
           if (run !== generation) return;
           attempt = 0;
           lastSeen = Date.now();
-          onStatus('connected');
           heartbeat = setInterval(() => {
             if (next.readyState !== WebSocket.OPEN) return;
             if (Date.now() - lastSeen > 60000) {
@@ -182,6 +206,8 @@
             }
             if (Array.isArray(message.state.history)) history = message.state.history;
             else if (!message.historyUnchanged) return;
+            clearTimeout(handshakeTimer);
+            onStatus('connected');
             onState({ ...message.state, history });
             if (!synced) {
               synced = true;
@@ -212,6 +238,7 @@
         };
         next.onclose = () => {
           if (run === generation) {
+            clearTimeout(handshakeTimer);
             clearInterval(heartbeat);
             for (const item of pending.values()) clearTimeout(item.ackTimer);
             retry();

@@ -208,6 +208,14 @@
       '這個房間使用舊版規則。已有歷史紀錄會保留，請新建房間。'
     ],
     localService: ['Local mode', '本地运行', '本機執行'],
+    unlockDownload: ['Downloading administrator content…', '正在下载管理员内容…', '正在下載管理員內容…'],
+    unlockDecode: ['Reading encrypted content…', '正在读取加密内容…', '正在讀取加密內容…'],
+    unlockVerify: ['Verifying password…', '正在验证密码…', '正在驗證密碼…'],
+    unlockDecrypt: ['Decrypting administrator content…', '正在解密管理员内容…', '正在解密管理員內容…'],
+    unlockPrepare: ['Preparing the game…', '正在准备游戏…', '正在準備遊戲…'],
+    serviceChecking: ['Checking online service…', '正在连接联机服务…', '正在連接連線服務…'],
+    retryService: ['Retry connection', '重新连接', '重新連接'],
+    offlineAvailable: ['Offline mode can still be unlocked and played. Online play needs a connection to the room service.', '单机模式仍可解锁游玩。联机模式需要连接房间服务。', '單機模式仍可解鎖遊玩。連線模式需要連接房間服務。'],
     serviceReady: ['Online service ready', '联机服务就绪', '連線服務就緒'],
     serviceUnavailable: ['Online service unavailable', '联机服务暂不可用', '連線服務暫不可用'],
     chooseMode: ['How are we playing?', '今天怎么玩？', '今天怎麼玩？'],
@@ -517,10 +525,17 @@
       '操作過於頻繁，請稍後重試。'
     ],
     SERVICE_UNAVAILABLE: [
-      'The online service is temporarily unavailable. Try again shortly.',
-      '联机服务暂时不可用，请稍后重试。',
-      '連線服務暫時無法使用，請稍後重試。'
+      'This device could not reach the room service. Check your connection and retry.',
+      '此设备未能连接房间服务，请检查网络后重新连接。',
+      '此裝置未能連接房間服務，請檢查網絡後重新連接。'
     ],
+    SERVICE_TIMEOUT: ['The room service took too long to respond. Retry the connection.', '房间服务响应超时，请重新连接。', '房間服務回應逾時，請重新連接。'],
+    NETWORK_OFFLINE: ['This device is offline. Reconnect to the internet and try again.', '此设备当前没有网络连接，请联网后重试。', '此裝置目前沒有網絡連線，請連網後重試。'],
+    REQUEST_CANCELLED: ['Request cancelled.', '已取消请求。', '已取消請求。'],
+    ADMIN_LOAD_TIMEOUT: ['The administrator download timed out. Check your connection and try again.', '管理员内容下载超时，请检查网络后重试。', '管理員內容下載逾時，請檢查網絡後重試。'],
+    ADMIN_LOAD_FAILED: ['Administrator content could not be loaded. Retry, or reopen index.html from the fully extracted release package.', '未能加载管理员内容。请重试，或完整解压成品包后重新打开 index.html。', '未能載入管理員內容。請重試，或完整解壓成品包後重新開啟 index.html。'],
+    ADMIN_CRYPTO_UNSUPPORTED: ['Open the HTTPS website in an up-to-date browser to unlock administrator mode.', '请使用新版浏览器打开 HTTPS 网站后解锁管理员模式。', '請使用新版瀏覽器開啟 HTTPS 網站後解鎖管理員模式。'],
+    ADMIN_COMPRESSION_UNSUPPORTED: ['This browser cannot open the game package. Update your browser and try again.', '此浏览器无法打开游戏内容，请更新浏览器后重试。', '此瀏覽器無法開啟遊戲內容，請更新瀏覽器後重試。'],
     SERVICE_NOT_CONFIGURED: [
       'The online service is not ready yet.',
       '联机服务尚未就绪。',

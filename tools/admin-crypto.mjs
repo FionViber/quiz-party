@@ -1,4 +1,5 @@
 import { webcrypto as crypto } from 'node:crypto';
+import { gzipSync, gunzipSync } from 'node:zlib';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -32,13 +33,13 @@ export async function encryptEnvelope(plain, password, iterations = ITERATIONS) 
   const iv = crypto.getRandomValues(new Uint8Array(16));
   const key = await derive(password, salt, iterations, ['encrypt']);
   const ciphertext = new Uint8Array(
-    await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoder.encode(JSON.stringify(plain)))
+    await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, gzipSync(encoder.encode(JSON.stringify(plain)), { level: 9 }))
   );
   const payload = new Uint8Array(salt.length + iv.length + ciphertext.length);
   payload.set(salt);
   payload.set(iv, salt.length);
   payload.set(ciphertext, salt.length + iv.length);
-  return { format: FORMAT, iterations, payload: base64(payload) };
+  return { format: FORMAT, iterations, compression: 'gzip', payload: base64(payload) };
 }
 
 export async function decryptEnvelope(envelope, password) {
@@ -47,7 +48,8 @@ export async function decryptEnvelope(envelope, password) {
     envelope.format !== FORMAT ||
     !Number.isInteger(envelope.iterations) ||
     envelope.iterations < 2_000_000 ||
-    typeof envelope.payload !== 'string'
+    typeof envelope.payload !== 'string' ||
+    (envelope.compression !== undefined && envelope.compression !== 'gzip')
   ) {
     throw new Error('Invalid administrator envelope');
   }
@@ -58,7 +60,7 @@ export async function decryptEnvelope(envelope, password) {
   const ciphertext = all.slice(48);
   const key = await derive(password, salt, envelope.iterations, ['decrypt']);
   const decoded = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
-  return JSON.parse(decoder.decode(decoded));
+  return JSON.parse(decoder.decode(envelope.compression === 'gzip' ? gunzipSync(new Uint8Array(decoded), { maxOutputLength: 64 * 1024 * 1024 }) : decoded));
 }
 
 export async function generateSigningKey() {

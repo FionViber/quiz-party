@@ -17,6 +17,7 @@
       view = 'entry',
       connectionStatus = { code: 'idle', error: false },
       notice = null,
+      serviceError = null,
       busy = false,
       composing = false,
       renderedScreen = null;
@@ -607,6 +608,9 @@
           button('show-scores', t('showScores')) +
           '</div>';
       main.innerHTML =
+        (serviceError && ['entry', 'online', 'join', 'admin'].includes(view)
+          ? '<section class="qp-alert" role="status"><p>' + escape(root.QuizI18n.error(language, serviceError)) + '</p><p>' + escape(t('offlineAvailable')) + '</p>' + button('retry-service', t('retryService'), { disabled: busy }, 'small') + '</section>'
+          : '') +
         (notice
           ? '<div class="qp-alert ' +
             (notice.error ? 'error' : '') +
@@ -797,6 +801,7 @@
           view = 'admin';
         });
       }
+      if (action === 'retry-service') return work(() => app.retryService());
       if (action === 'join-submit') return joinRoom();
       if (action === 'admin-create-submit') return createRoom();
       if (action === 'all-categories' || action === 'clear-categories') {
@@ -1047,6 +1052,7 @@
         notice = { message, error };
         render();
       },
+      setServiceError(code) { serviceError = code; render(); },
       render,
       getState: () => room,
       getLanguage: () => language,

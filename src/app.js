@@ -84,6 +84,7 @@
     }
   });
   const flowData = new WeakMap(), flowCache = new Map();
+  let renderedScreen = null;
   const BOARD_PAGE_SIZE = 48; // Eight columns × six rows: no board scrolling.
   let libraryRows = [];
   function t(key, params = {}) {
@@ -92,7 +93,7 @@
     return value;
   }
   function B(action, label, cls = '', extra = '', symbol = '') { return `<button type="button" class="btn ${cls}" data-action="${action}" ${extra}>${symbol ? icon(symbol) : ''}${e(label)}</button>`; }
-  function L(action, label, symbol = '', extra = '') { return `<button type="button" class="utility" data-action="${action}" ${extra}>${symbol ? icon(symbol) : ''}<span class="optional-label">${e(label)}</span></button>`; }
+  function L(action, label, symbol = '', extra = '') { return `<button type="button" class="utility" data-action="${action}" aria-label="${e(label)}" ${extra}>${symbol ? icon(symbol) : ''}<span class="optional-label">${e(label)}</span></button>`; }
   function knownPacks(){return [...builtins,...packs,...cachedGamePacks];}
   function isBuiltin(pack){
     const wanted=Cache.packIdentity(pack,Archive);
@@ -156,6 +157,8 @@
   }
   function render() {
     reconcileView();header();
+    const screen=[state.view,state.game?.current?.qid,state.game?.current?.phase].join(':');
+    if(screen!==renderedScreen){const stage=$('#game-stage');if(stage){stage.scrollTop=0;stage.scrollLeft=0;}renderedScreen=screen;}
     const views = {home:homeView,setup:setupView,board:boardView,question:questionView,library:libraryView,results:resultsView};
     main.innerHTML = (views[state.view] || homeView)();
     main.className = 'view-' + state.view;
@@ -196,7 +199,7 @@
       if(selected){
         tile.setAttribute('aria-keyshortcuts','Enter');
         if(!cue){cue=document.createElement('span');cue.className='board-focus-cue';cue.setAttribute('aria-hidden','true');cue.textContent='Enter';tile.querySelector('.board-tile-meta').append(cue);}
-        if(focus)tile.focus({preventScroll:true});
+        if(focus){tile.focus({preventScroll:true});tile.scrollIntoView?.({block:'nearest',inline:'nearest'});}
       }else{
         tile.removeAttribute('aria-keyshortcuts');
         cue?.remove();
@@ -215,7 +218,9 @@
       return true;
     }
     if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.code))return false;
-    const index=window.NeoBoardNavigation.move(slots,state.boardCursor,event.code,state.boardPage);
+    const grid=main.querySelector('.board-fixed-grid');
+    const columns=grid?getComputedStyle(grid).gridTemplateColumns.split(/\s+/).filter(Boolean).length:8;
+    const index=window.NeoBoardNavigation.move(slots,state.boardCursor,event.code,state.boardPage,columns||8);
     if(index<0)return true;
     state.boardCursor=slots[index].qid;
     const page=Math.floor(index/BOARD_PAGE_SIZE);
@@ -931,6 +936,13 @@
   document.addEventListener('pointerover',event=>{
     const target=event.target.closest('button:not(:disabled),a.btn');
     if(target&&!target.contains(event.relatedTarget))audio.play('hover');
+  });
+  let boardPointerPosition=null;
+  document.addEventListener('pointerdown',event=>{boardPointerPosition={x:event.clientX,y:event.clientY};});
+  document.addEventListener('pointermove',event=>{
+    if(boardPointerPosition?.x===event.clientX&&boardPointerPosition?.y===event.clientY)return;
+    boardPointerPosition={x:event.clientX,y:event.clientY};
+    document.documentElement.dataset.input='pointer';
     updateBoardPointer(event);
   });
   function updateBoardPointer(event){
@@ -967,9 +979,10 @@
     }
   });
   function resizeStage() {
-    const w=window.innerWidth,h=window.innerHeight,scale=Math.min(w/1920,h/1080);
-    const stage=$('#game-stage');stage.style.transform=`translate(-50%, -50%) scale(${scale})`;
+    const w=window.innerWidth,h=window.innerHeight,fluid=w<=1100||h<=620,scale=fluid?1:Math.min(w/1920,h/1080);
+    const stage=$('#game-stage');stage.style.transform=fluid?'none':`translate(-50%, -50%) scale(${scale})`;
     stage.dataset.scale=String(scale);
+    layoutFlows(main);if(state.modal)layoutFlows(dialog);
     syncKeyboard();
   }
   window.addEventListener('resize',resizeStage);

@@ -16,6 +16,8 @@
 
 成品包解压后打开 index.html，单机模式在本地运行。联机入口会打开在线网站。
 
+手机和平板可横屏或竖屏游玩，题目按当前界面语言显示。管理员解锁时会显示下载和密码验证进度。联机连接失败时可点“重新连接”，单机解锁不依赖房间服务。
+
 ### 单机步骤
 
 #### 一起回答
@@ -132,6 +134,8 @@ Multiple-choice questions are worth 100, 200, 300 or 400 points. Short answers a
 
 To use the release package, unzip it and open index.html. Offline mode runs locally. The online button opens the website.
 
+Phones and tablets work in portrait or landscape, showing questions in the selected language. Administrator unlock shows download and password-verification progress. If the room connection fails, select Retry connection. Offline unlock does not depend on the room service.
+
 ### Offline steps
 
 #### Together
@@ -229,6 +233,8 @@ Page encryption is based on [PageCrypt](https://github.com/FionViber/pagecrypt).
 選擇題為 100、200、300、400 分，簡答題為 200、400、600、800 分。每局最多 96 題，輪流模式會調整為完整輪次。
 
 成品包解壓縮後開啟 index.html，單機模式在本機執行。連線入口會開啟網站。
+
+手機和平板可橫屏或直屏遊玩，題目按目前介面語言顯示。管理員解鎖時會顯示下載與密碼驗證進度。連線失敗時可選「重新連接」，單機解鎖不依賴房間服務。
 
 ### 單機步驟
 

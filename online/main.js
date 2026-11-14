@@ -7,7 +7,7 @@
     HISTORY = 'quizparty.online.history.v6' + suffix,
     PREFS = 'quizparty.online.preferences.v6' + suffix;
   const shell = document.getElementById('quiz-online');
-  const localFile = location.protocol === 'file:';
+  const localFile = !/^https?:$/.test(location.protocol);
   const landing = new URLSearchParams(location.search);
   const restoreController = new AbortController();
   let ui,
@@ -160,21 +160,28 @@
         button.disabled = true;
         message.textContent = say('Unlocking…', '正在解锁…', '正在解鎖…');
         try {
-          await root.QuizAccess.unlock(form.querySelector('input').value, { signal: abort.signal });
+          await root.QuizAccess.unlock(form.querySelector('input').value, {
+            signal: abort.signal,
+            onProgress(phase, detail = {}) {
+              if (!box.open) return;
+              if (phase === 'load-progress') {
+                const loaded = (Number(detail.loaded || 0) / 1048576).toFixed(1);
+                const total = detail.total > 0 ? ' / ' + (detail.total / 1048576).toFixed(1) : '';
+                message.textContent = say('Downloading administrator content', '正在下载管理员内容', '正在下載管理員內容') + ' ' + loaded + total + ' MB';
+              } else {
+                const key = { 'load-start': 'unlockDownload', load: 'unlockDecode', derive: 'unlockVerify', decrypt: 'unlockDecrypt', decompress: 'unlockPrepare', ready: 'unlockPrepare' }[phase];
+                if (key) message.textContent = t(key);
+              }
+            }
+          });
           if (!box.open) return;
           resolve(true);
           box.close();
           ui.render();
         } catch (error) {
           if (!box.open) return;
-          message.textContent =
-            error.name === 'OperationError'
-              ? t('wrongPassword')
-              : say(
-                  'Unable to load the administrator module. Try again.',
-                  '无法加载管理员模块，请重试。',
-                  '無法載入管理員模組，請重試。'
-                );
+          message.textContent = error.name === 'OperationError' ? t('wrongPassword')
+            : root.QuizI18n.error(language(), error.code || 'ADMIN_LOAD_FAILED');
           button.disabled = false;
           delete form.dataset.busy;
         }
@@ -211,20 +218,33 @@
     if (path === '/api/rooms') headers.Authorization = 'Bearer ' + (await getAdminToken());
     return root.QuizTransport.api(path, { ...options, headers });
   }
-  let catalogPending = null;
-  async function ensureCatalog() {
-    if (categories.length) return categories;
+  let catalogPending = null, serviceFailed = false;
+  async function ensureCatalog({ refresh = false } = {}) {
+    if (categories.length && !refresh) return categories;
     if (catalogPending) return catalogPending;
+    if (!connection) ui.status('serviceChecking');
     catalogPending = (async () => {
       const meta = await api('/api/meta');
-      if (!Array.isArray(meta.categories))
+      if (meta.protocol !== 2)
+        throw Object.assign(new Error('CLIENT_UPDATE_REQUIRED'), { code: 'CLIENT_UPDATE_REQUIRED' });
+      if (!meta.configured)
+        throw Object.assign(new Error('SERVICE_NOT_CONFIGURED'), { code: 'SERVICE_NOT_CONFIGURED' });
+      if (!Array.isArray(meta.categories) || !meta.categories.length)
         throw Object.assign(new Error('BANK_NOT_READY'), { code: 'BANK_NOT_READY' });
       categories = meta.categories;
+      serviceFailed = false;
+      ui.setServiceError?.(null);
+      if (!connection) ui.status('serviceReady');
       ui.render();
       return categories;
     })();
     try {
       return await catalogPending;
+    } catch (error) {
+      serviceFailed = true;
+      ui.setServiceError?.(error.code || 'SERVICE_UNAVAILABLE');
+      if (!connection) ui.status('serviceUnavailable', true);
+      throw error;
     } finally {
       catalogPending = null;
     }
@@ -540,6 +560,7 @@
     },
     getCategories: () => categories,
     ensureCatalog,
+    retryService: () => ensureCatalog({ refresh: true }).catch(() => {}),
     getSession: () => session,
     getState: () => state,
     download,
@@ -621,13 +642,9 @@
       connect(session);
   })();
   if (localFile) ui.status('localService');
-  else
-    ensureCatalog()
-      .then(() => {
-        if (!connection) ui.status('serviceReady');
-      })
-      .catch(() => {
-        if (!connection) ui.status('serviceUnavailable', true);
-      });
+  else ensureCatalog().catch(() => {});
+  root.addEventListener('online', () => {
+    if (!localFile && serviceFailed && !connection) app.retryService();
+  });
   document.addEventListener('fullscreenchange', () => ui.render());
 })(window);
