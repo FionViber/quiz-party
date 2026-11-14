@@ -17,7 +17,6 @@ async function renderElementToPng(element,{scale=1,background='#fff'}={}) {
   if(element.ownerDocument?.fonts?.ready)await element.ownerDocument.fonts.ready;
   const transitions=(element.getAnimations?.({subtree:true})||[]).filter(a=>a.playState==='running'&&a.effect?.getComputedTiming().iterations!==Infinity);
   await Promise.all(transitions.map(a=>a.finished.catch(()=>{})));
-  const doc=element.ownerDocument||document,charts=Array.from(element.querySelectorAll?.('.results-graphic')||[]).map(svg=>chartCanvas(svg,doc));
   const canvas=await root.html2canvas(element,{backgroundColor:background,scale:Math.max(1,Math.min(4,Number(scale)||1)),windowWidth:1920,windowHeight:1080,scrollX:0,scrollY:0,useCORS:false,allowTaint:true,onclone:(clonedDoc,clonedElement)=>{
     for(const node of Array.from(clonedDoc.querySelectorAll('#modal-layer,#toast,#curtain,.skip-link,input[type="file"],noscript')))node.remove();
     const stage=clonedElement?.matches?.('#game-stage')?clonedElement:clonedDoc.getElementById('game-stage');
@@ -25,7 +24,7 @@ async function renderElementToPng(element,{scale=1,background='#fff'}={}) {
     if(viewport){viewport.style.overflow='visible';viewport.style.width='1920px';viewport.style.height='1080px';viewport.style.transform='none';}
     if(stage){stage.style.transform='none';stage.style.position='relative';stage.style.left='0';stage.style.top='0';stage.style.margin='0';stage.style.width='1920px';stage.style.height='1080px';stage.style.overflow='visible';}
     Array.from((clonedElement||clonedDoc).querySelectorAll?.('.results-graphic')||[]).forEach((svg,i)=>{
-      const source=charts[i];if(!source)return;
+      const source=chartCanvas(svg,clonedDoc);
       // Keep the chart as a bitmap canvas in the html2canvas clone. An <img>
       // backed by a data URI is asynchronous; html2canvas may start parsing
       // the clone before that image has decoded, which produced blank charts
